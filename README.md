@@ -33,7 +33,7 @@ Melakukan konfigurasi alamat IP dan default gateway pada seluruh node *The Mesh*
 | 15 | oblada  | eth0      | 192.225.4.4/24 | 192.225.4.1     |
 | 16 | molly   | eth0      | 192.225.4.5/24 | 192.225.4.1     |
 | 17 | prab    | eth0      | 192.225.5.2/24 | 192.225.5.1     |
-| 18 | tedd    | eth0      | 192.225.5.3/24 | 192.225.5.      |
+| 18 | tedd    | eth0      | 192.225.5.3/24 | 192.225.5.1      |
 
 
 ## Konfigurasi Rootkit
