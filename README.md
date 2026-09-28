@@ -330,3 +330,276 @@ ping -c 3 google.com
 
 Hasil pengujian digunakan untuk memastikan node dapat melakukan resolusi nama domain dan terhubung ke internet.
 
+---
+# Soal 3 — Routing Internal dan Resolver
+
+## Tujuan
+
+Memastikan seluruh Entitas dapat saling berkomunikasi melalui `rootkit` sebagai router serta memastikan setiap host non-router memiliki resolver `192.168.122.1` untuk mendukung akses jaringan dan instalasi paket.
+
+### Mengaktifkan Routing pada Rootkit
+
+Pada **console `rootkit`**, aktifkan IP forwarding:
+
+```bash
+sysctl -w net.ipv4.ip_forward=1
+```
+
+Kemudian cek:
+
+```bash
+sysctl net.ipv4.ip_forward
+```
+
+Nilai yang diperoleh harus:
+
+```text
+net.ipv4.ip_forward = 1
+```
+
+### Menambahkan Resolver pada Host Non-Router
+
+Pada setiap **host selain `rootkit`**, cek konfigurasi DNS:
+
+```bash
+cat /etc/resolv.conf
+```
+
+Jika belum terdapat resolver `192.168.122.1`, edit file:
+
+```bash
+nano /etc/resolv.conf
+```
+
+Tambahkan:
+
+```text
+nameserver 192.168.122.1
+```
+
+Jika resolver tersebut sudah tersedia, tidak perlu menambahkan resolver lain.
+
+### Pengujian Routing Internal
+
+Pengujian dilakukan dari host non-router dengan melakukan ping ke gateway dan host pada jaringan lain.
+
+Contoh dari **alpha**:
+
+```bash
+ping -c 3 192.225.1.1
+```
+
+Kemudian menguji komunikasi lintas jaringan, misalnya:
+
+```bash
+ping -c 3 192.225.5.2
+```
+
+Jika berhasil, berarti paket dapat melewati `rootkit` menuju jaringan internal lainnya.
+
+###  Pengujian DNS
+
+Pada host non-router, dilakukan pengujian resolusi nama domain:
+
+```bash
+ping -c 3 google.com
+```
+
+Pengujian ini memastikan resolver dapat menerjemahkan nama domain menjadi alamat IP.
+
+---
+# Soal 4 — Konfigurasi DNS Master dan Slave
+
+## Tujuan
+
+Membangun DNS authoritative pada `prab` sebagai DNS Master dan `tedd` sebagai DNS Slave untuk zona `k28.com`. Zona memiliki SOA, NS record, A record untuk `prab` dan `tedd`, serta A record apex `k28.com` yang mengarah ke `penny`.
+
+## 1. Instalasi BIND
+
+Instalasi dilakukan pada node **prab** dan **tedd** menggunakan Alpine Linux.
+
+```bash
+apk update
+apk add bind bind-tools
+```
+
+Kemudian service BIND diaktifkan:
+
+```bash
+rc-update add named
+service named start
+```
+
+## 2. Konfigurasi DNS Master pada Prab
+
+Pada node **prab**, file `/etc/bind/named.conf` dikonfigurasi dengan zona `k28.com`:
+
+```text
+zone "k28.com" {
+    type master;
+    file "/etc/bind/zones/k28.com";
+    notify yes;
+    allow-transfer { 192.225.5.3; };
+    also-notify { 192.225.5.3; };
+};
+```
+
+## 3. Zone File pada Prab
+
+Direktori zona dibuat dengan:
+
+```bash
+mkdir -p /etc/bind/zones
+```
+
+Kemudian file `/etc/bind/zones/k28.com` dibuat dengan isi:
+
+```text
+$TTL 86400
+@   IN  SOA prab.k28.com. admin.k28.com. (
+        2026092801
+        3600
+        1800
+        604800
+        86400
+)
+
+@       IN  NS  prab.k28.com.
+@       IN  NS  tedd.k28.com.
+
+prab    IN  A   192.225.5.2
+tedd    IN  A   192.225.5.3
+
+@       IN  A   192.225.3.3
+```
+
+Dengan konfigurasi tersebut:
+
+* `prab.k28.com` → `192.225.5.2`
+* `tedd.k28.com` → `192.225.5.3`
+* `k28.com` → `192.225.3.3` (`penny`)
+
+## 4. Konfigurasi Forwarder pada Prab
+
+Pada bagian `options` di `/etc/bind/named.conf` ditambahkan:
+
+```text
+options {
+    directory "/var/bind";
+
+    listen-on { any; };
+    listen-on-v6 { none; };
+
+    allow-query { any; };
+
+    forwarders {
+        192.168.122.1;
+    };
+
+    recursion yes;
+};
+```
+
+Forwarder digunakan untuk meneruskan query DNS yang tidak berasal dari zona `k28.com` ke `192.168.122.1`.
+
+## 5. Verifikasi DNS Master
+
+Pada node **prab**, konfigurasi diperiksa menggunakan:
+
+```bash
+named-checkconf
+```
+
+Kemudian zone diperiksa:
+
+```bash
+named-checkzone k28.com /etc/bind/zones/k28.com
+```
+
+Setelah konfigurasi dinyatakan benar, service BIND dijalankan ulang:
+
+```bash
+service named restart
+```
+
+## 6. Konfigurasi DNS Slave pada Tedd
+
+Pada node **tedd**, file `/etc/bind/named.conf` dikonfigurasi:
+
+```text
+zone "k28.com" {
+    type slave;
+    masters { 192.225.5.2; };
+    file "/var/bind/k28.com";
+};
+```
+
+Kemudian service BIND dijalankan ulang:
+
+```bash
+service named restart
+```
+
+Zona diperiksa untuk memastikan proses zone transfer dari `prab` berhasil:
+
+```bash
+ls -l /var/bind/
+```
+
+## 7. Konfigurasi Resolver pada Entitas Non-Router
+
+Pada seluruh node selain `rootkit`, file `/etc/resolv.conf` diperbarui menjadi:
+
+```text
+nameserver 192.225.5.2
+nameserver 192.225.5.3
+nameserver 192.168.122.1
+```
+
+Urutan resolver adalah `prab`, kemudian `tedd`, dan terakhir `192.168.122.1`.
+
+## 8. Verifikasi DNS
+
+Pengujian dilakukan untuk memastikan DNS Master dan Slave dapat menjawab query.
+
+Query ke Master:
+
+```bash
+nslookup k28.com 192.225.5.2
+```
+
+Query ke Slave:
+
+```bash
+nslookup k28.com 192.225.5.3
+```
+
+Pengujian hostname `prab`:
+
+```bash
+nslookup prab.k28.com 192.225.5.2
+```
+
+Pengujian hostname `tedd`:
+
+```bash
+nslookup tedd.k28.com 192.225.5.2
+```
+
+Pengujian dari Slave:
+
+```bash
+nslookup k28.com 192.225.5.3
+```
+
+Hasil yang diharapkan:
+
+```text
+k28.com        → 192.225.3.3
+prab.k28.com   → 192.225.5.2
+tedd.k28.com   → 192.225.5.3
+```
+
+Dengan demikian, `prab` berfungsi sebagai DNS Master authoritative dan `tedd` sebagai DNS Slave authoritative untuk zona `k28.com`.
+
+
