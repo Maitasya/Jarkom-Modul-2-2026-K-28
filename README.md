@@ -15,26 +15,26 @@ Melakukan konfigurasi alamat IP dan default gateway pada seluruh node *The Mesh*
 
 ## Tabel Konfigurasi IP
 
-                  | No | Node    | Peran            | Interface | IP Address     | Default Gateway |
-                  | -: | ------- | ---------------- | --------- | -------------- | --------------- |
-                  |  1 | rootkit | Router / Gateway | eth1      | 192.225.1.1/24 | -               |
-                  |  2 | rootkit | Router / Gateway | eth2      | 192.225.2.1/24 | -               |
-                  |  3 | rootkit | Router / Gateway | eth3      | 192.225.3.1/24 | -               |
-                  |  4 | rootkit | Router / Gateway | eth4      | 192.225.4.1/24 | -               |
-                  |  5 | rootkit | Router / Gateway | eth5      | 192.225.5.1/24 | -               |
-                  |  6 | alpha   | Klien            | eth0      | 192.225.1.2/24 | 192.225.1.1     |
-                  |  7 | beta    | Klien            | eth0      | 192.225.1.3/24 | 192.225.1.1     |
-                  |  8 | gamma   | Klien            | eth0      | 192.225.1.4/24 | 192.225.1.1     |
-                  |  9 | delta   | Klien            | eth0      | 192.225.2.2/24 | 192.225.2.1     |
-                  | 10 | epsilon | Klien            | eth0      | 192.225.2.3/24 | 192.225.2.1     |
-                  | 11 | abbey   | Reverse Proxy    | eth0      | 192.225.3.2/24 | 192.225.3.1     |
-                  | 12 | penny   | Reverse Proxy    | eth0      | 192.225.3.3/24 | 192.225.3.1     |
-                  | 13 | prab    | DNS Master       | eth0      | 192.225.5.2/24 | 192.225.5.1     |
-                  | 14 | tedd    | DNS Slave        | eth0      | 192.225.5.3/24 | 192.225.5.1     |
-                  | 15 | obladi  | Web Statis       | eth0      | 192.225.4.2/24 | 192.225.4.1     |
-                  | 16 | desmond | Web Statis       | eth0      | 192.225.4.3/24 | 192.225.4.1     |
-                  | 17 | oblada  | Web Dinamis      | eth0      | 192.225.4.4/24 | 192.225.4.1     |
-                  | 18 | molly   | Web Dinamis      | eth0      | 192.225.4.5/24 | 192.225.4.1     |
+                        | No | Node    | Peran            | Interface | IP Address     | Default Gateway |
+                        | -: | ------- | ---------------- | --------- | -------------- | --------------- |
+                        |  1 | rootkit | Router / Gateway | eth1      | 192.225.1.1/24 | -               |
+                        |  2 | rootkit | Router / Gateway | eth2      | 192.225.2.1/24 | -               |
+                        |  3 | rootkit | Router / Gateway | eth3      | 192.225.3.1/24 | -               |
+                        |  4 | rootkit | Router / Gateway | eth4      | 192.225.4.1/24 | -               |
+                        |  5 | rootkit | Router / Gateway | eth5      | 192.225.5.1/24 | -               |
+                        |  6 | alpha   | Klien            | eth0      | 192.225.1.2/24 | 192.225.1.1     |
+                        |  7 | beta    | Klien            | eth0      | 192.225.1.3/24 | 192.225.1.1     |
+                        |  8 | gamma   | Klien            | eth0      | 192.225.1.4/24 | 192.225.1.1     |
+                        |  9 | delta   | Klien            | eth0      | 192.225.2.2/24 | 192.225.2.1     |
+                        | 10 | epsilon | Klien            | eth0      | 192.225.2.3/24 | 192.225.2.1     |
+                        | 11 | abbey   | Reverse Proxy    | eth0      | 192.225.3.2/24 | 192.225.3.1     |
+                        | 12 | penny   | Reverse Proxy    | eth0      | 192.225.3.3/24 | 192.225.3.1     |
+                        | 13 | prab    | DNS Master       | eth0      | 192.225.5.2/24 | 192.225.5.1     |
+                        | 14 | tedd    | DNS Slave        | eth0      | 192.225.5.3/24 | 192.225.5.1     |
+                        | 15 | obladi  | Web Statis       | eth0      | 192.225.4.2/24 | 192.225.4.1     |
+                        | 16 | desmond | Web Statis       | eth0      | 192.225.4.3/24 | 192.225.4.1     |
+                        | 17 | oblada  | Web Dinamis      | eth0      | 192.225.4.4/24 | 192.225.4.1     |
+                        | 18 | molly   | Web Dinamis      | eth0      | 192.225.4.5/24 | 192.225.4.1     |
 
 ## Konfigurasi Rootkit
 
