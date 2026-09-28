@@ -1,43 +1,46 @@
-﻿# Jarkom-Modul-2-2026-K-28
+# Jarkom-Modul-2-2026-K-28
+
 ## Kelompok K-28
 
-| Nama | NRP |
-| :---: | :---: |
-| Maitasya Rohmatul Ula | 5027251026 |
+|            Nama           |     NRP    |
+| :-----------------------: | :--------: |
+|   Maitasya Rohmatul Ula   | 5027251026 |
 | A. Algifari Rantiga Isdar | 5027251084 |
 
 ---
+
 # Soal 1 — Konfigurasi IP Address dan Default Gateway
 
 ## Tujuan
 
-Melakukan konfigurasi alamat IP dan default gateway pada seluruh node *The Mesh* sesuai dengan pembagian jaringan pada topologi. Setiap kelompok menggunakan prefix `192.225.x.x`, sedangkan `rootkit` berperan sebagai router/gateway utama yang menghubungkan seluruh jaringan internal.
+Melakukan konfigurasi alamat IP dan default gateway pada seluruh node *The Mesh* sesuai dengan pembagian jaringan pada topologi. Setiap jaringan menggunakan prefix `192.225.x.x`, sedangkan `rootkit` berperan sebagai router/gateway utama yang menghubungkan seluruh jaringan internal.
 
 <img width="959" height="415" alt="image" src="https://github.com/user-attachments/assets/6de7ff0a-14f3-425f-a54d-55c880b5ca2b" />
 
 ## Tabel Konfigurasi IP
-| No | Node    | Interface | IP Address     | Default Gateway |
-| -: | ------- | --------- | -------------- | --------------- |
-|  1 | rootkit | eth1      | 192.225.1.1/24 | -               |
-|  2 | rootkit | eth2      | 192.225.2.1/24 | -               |
-|  3 | rootkit | eth3      | 192.225.3.1/24 | -               |
-|  4 | rootkit | eth4      | 192.225.4.1/24 | -               |
-|  5 | rootkit | eth5      | 192.225.5.1/24 | -               |
-|  6 | alpha   | eth0      | 192.225.1.2/24 | 192.225.1.1     |
-|  7 | beta    | eth0      | 192.225.1.3/24 | 192.225.1.1     |
-|  8 | gamma   | eth0      | 192.225.1.4/24 | 192.225.1.1     |
-|  9 | delta   | eth0      | 192.225.2.2/24 | 192.225.2.1     |
-| 10 | epsilon | eth0      | 192.225.2.3/24 | 192.225.2.1     |
-| 11 | abbey   | eth0      | 192.225.3.2/24 | 192.225.3.1     |
-| 12 | penny   | eth0      | 192.225.3.3/24 | 192.225.3.1     |
-| 13 | obladi  | eth0      | 192.225.4.2/24 | 192.225.4.1     |
-| 14 | desmond | eth0      | 192.225.4.3/24 | 192.225.4.1     |
-| 15 | oblada  | eth0      | 192.225.4.4/24 | 192.225.4.1     |
-| 16 | molly   | eth0      | 192.225.4.5/24 | 192.225.4.1     |
-| 17 | prab    | eth0      | 192.225.5.2/24 | 192.225.5.1     |
-| 18 | tedd    | eth0      | 192.225.5.3/24 | 192.225.5.1      |
 
-## 1. Konfigurasi IP Address dan Default Gateway
+| No | Node    | Interface | IP Address       | Default Gateway |
+| -: | ------- | --------- | ---------------- | --------------- |
+|  1 | rootkit | eth1      | `192.225.1.1/24` | -               |
+|  2 | rootkit | eth2      | `192.225.2.1/24` | -               |
+|  3 | rootkit | eth3      | `192.225.3.1/24` | -               |
+|  4 | rootkit | eth4      | `192.225.4.1/24` | -               |
+|  5 | rootkit | eth5      | `192.225.5.1/24` | -               |
+|  6 | alpha   | eth0      | `192.225.1.2/24` | `192.225.1.1`   |
+|  7 | beta    | eth0      | `192.225.1.3/24` | `192.225.1.1`   |
+|  8 | gamma   | eth0      | `192.225.1.4/24` | `192.225.1.1`   |
+|  9 | delta   | eth0      | `192.225.2.2/24` | `192.225.2.1`   |
+| 10 | epsilon | eth0      | `192.225.2.3/24` | `192.225.2.1`   |
+| 11 | abbey   | eth0      | `192.225.3.2/24` | `192.225.3.1`   |
+| 12 | penny   | eth0      | `192.225.3.3/24` | `192.225.3.1`   |
+| 13 | obladi  | eth0      | `192.225.4.2/24` | `192.225.4.1`   |
+| 14 | desmond | eth0      | `192.225.4.3/24` | `192.225.4.1`   |
+| 15 | oblada  | eth0      | `192.225.4.4/24` | `192.225.4.1`   |
+| 16 | molly   | eth0      | `192.225.4.5/24` | `192.225.4.1`   |
+| 17 | prab    | eth0      | `192.225.5.2/24` | `192.225.5.1`   |
+| 18 | tedd    | eth0      | `192.225.5.3/24` | `192.225.5.1`   |
+
+## Konfigurasi IP Address dan Default Gateway
 
 Pada tahap ini dilakukan konfigurasi IP Address dan Default Gateway pada seluruh node berdasarkan pembagian jaringan pada masing-masing switch.
 
@@ -48,12 +51,12 @@ Konfigurasi pada file `/etc/network/interfaces`:
 ```text
 auto eth1
 iface eth1 inet static
-    address 192.225.5.1
+    address 192.225.1.1
     netmask 255.255.255.0
 
 auto eth2
 iface eth2 inet static
-    address 192.225.4.1
+    address 192.225.2.1
     netmask 255.255.255.0
 
 auto eth3
@@ -63,14 +66,14 @@ iface eth3 inet static
 
 auto eth4
 iface eth4 inet static
-    address 192.225.1.1
+    address 192.225.4.1
     netmask 255.255.255.0
 
 auto eth5
 iface eth5 inet static
-    address 192.225.2.1
+    address 192.225.5.1
     netmask 255.255.255.0
-````
+```
 
 ### Konfigurasi Alpha
 
@@ -122,7 +125,7 @@ iface eth0 inet static
     gateway 192.225.2.1
 ```
 
-### Konfigurasi Penny
+### Konfigurasi Abbey
 
 ```text
 auto eth0
@@ -132,12 +135,52 @@ iface eth0 inet static
     gateway 192.225.3.1
 ```
 
-### Konfigurasi Abbey
+### Konfigurasi Penny
+
+```text
+auto eth0
+iface eth0 inet static
+    address 192.225.3.3
+    netmask 255.255.255.0
+    gateway 192.225.3.1
+```
+
+### Konfigurasi Obladi
 
 ```text
 auto eth0
 iface eth0 inet static
     address 192.225.4.2
+    netmask 255.255.255.0
+    gateway 192.225.4.1
+```
+
+### Konfigurasi Desmond
+
+```text
+auto eth0
+iface eth0 inet static
+    address 192.225.4.3
+    netmask 255.255.255.0
+    gateway 192.225.4.1
+```
+
+### Konfigurasi Oblada
+
+```text
+auto eth0
+iface eth0 inet static
+    address 192.225.4.4
+    netmask 255.255.255.0
+    gateway 192.225.4.1
+```
+
+### Konfigurasi Molly
+
+```text
+auto eth0
+iface eth0 inet static
+    address 192.225.4.5
     netmask 255.255.255.0
     gateway 192.225.4.1
 ```
@@ -162,51 +205,9 @@ iface eth0 inet static
     gateway 192.225.5.1
 ```
 
-### Konfigurasi Obladi
-
-```text
-auto eth0
-iface eth0 inet static
-    address 192.225.5.4
-    netmask 255.255.255.0
-    gateway 192.225.5.1
-```
-
-### Konfigurasi Desmond
-
-```text
-auto eth0
-iface eth0 inet static
-    address 192.225.5.5
-    netmask 255.255.255.0
-    gateway 192.225.5.1
-```
-
-### Konfigurasi Oblada
-
-```text
-auto eth0
-iface eth0 inet static
-    address 192.225.5.6
-    netmask 255.255.255.0
-    gateway 192.225.5.1
-```
-
-### Konfigurasi Molly
-
-```text
-auto eth0
-iface eth0 inet static
-    address 192.225.5.7
-    netmask 255.255.255.0
-    gateway 192.225.5.1
-```
-
-
-
 ## Verifikasi
 
-Setelah konfigurasi dilakukan, setiap node diperiksa menggunakan:
+Setelah konfigurasi dilakukan, konfigurasi IP pada setiap node diperiksa menggunakan:
 
 ```bash
 ip addr
@@ -214,11 +215,14 @@ ip addr
 
 untuk memastikan alamat IP telah sesuai.
 
-Default gateway diperiksa menggunakan:
+Default gateway dan routing diperiksa menggunakan:
 
 ```bash
 ip route
 ```
+
+Selain pemeriksaan manual, dibuat script `.sh` pada masing-masing node untuk membantu melakukan pengecekan konfigurasi dan konektivitas jaringan. Script tersebut digunakan sebagai verifikasi tambahan terhadap hasil konfigurasi IP dan gateway yang telah diterapkan.
+
 ## Script Verifikasi Node
 
 Untuk memastikan konfigurasi jaringan setiap node berjalan dengan baik, digunakan script pengecekan `.sh`. Script digunakan untuk mengecek IP, gateway, routing, koneksi internet, serta konektivitas dengan node lain.
@@ -254,9 +258,75 @@ Kemudian dijalankan menggunakan:
 ./cek_noderootkit.sh
 ```
 
-Pada node lainnya, nama script disesuaikan dengan nama node.
+Pada node lainnya, nama script disesuaikan dengan nama node. Hasil dari setiap script digunakan untuk memastikan konfigurasi dan konektivitas seluruh node telah berjalan sesuai topologi.
 
-Hasil dari setiap script digunakan untuk memastikan konfigurasi dan konektivitas seluruh node telah berjalan sesuai topologi.
+---
+# Soal 2 — Konfigurasi NAT dan Akses Internet
+
+## Tujuan
+
+Mengaktifkan *IP forwarding* dan konfigurasi NAT pada `rootkit` agar seluruh jaringan internal dapat meneruskan lalu lintas menuju internet melalui interface WAN `eth0`.
+
+### Konfigurasi Rootkit
+
+Pada node **`rootkit`**, konfigurasi `/etc/network/interfaces` ditambahkan:
+
+```text
+up sysctl -w net.ipv4.ip_forward=1
+up iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+up iptables -A FORWARD -i eth1 -o eth0 -j ACCEPT
+up iptables -A FORWARD -i eth2 -o eth0 -j ACCEPT
+up iptables -A FORWARD -i eth3 -o eth0 -j ACCEPT
+up iptables -A FORWARD -i eth4 -o eth0 -j ACCEPT
+up iptables -A FORWARD -i eth5 -o eth0 -j ACCEPT
+up iptables -A FORWARD -i eth0 -m state --state ESTABLISHED,RELATED -j ACCEPT
+```
+
+Konfigurasi tersebut mengaktifkan *IP forwarding*, melakukan *MASQUERADE* untuk jaringan internal, serta mengizinkan lalu lintas dari seluruh interface internal `eth1`–`eth5` menuju interface WAN `eth0`.
+
+## Verifikasi
+
+Pengujian dilakukan pada **console masing-masing client/node internal**, bukan hanya pada `rootkit`.
+
+Contoh pada **alpha**:
+
+```bash
+ping -c 3 8.8.8.8
+```
+
+Kemudian:
+
+```bash
+ping -c 3 google.com
+```
+
+<img width="410" height="179" alt="image" src="https://github.com/user-attachments/assets/a74ae3e5-43d8-4cae-a905-97583a53a178" />
 
 
+Pengujian yang sama dapat dilakukan pada node internal lainnya untuk memastikan seluruh jaringan dapat mengakses internet. Hasil pengujian menunjukkan bahwa node internal dapat menjangkau alamat IP publik `8.8.8.8` dan melakukan koneksi menggunakan nama domain `google.com`.  Ketika pengujian `ping google.com` mengalami kegagalan, dilakukan pengecekan konfigurasi DNS pada node yang bermasalah menggunakan:
+
+```bash
+cat /etc/resolv.conf
+```
+
+Jika konfigurasi DNS belum sesuai, file `/etc/resolv.conf` diperbaiki menggunakan:
+
+```bash
+nano /etc/resolv.conf
+```
+
+Kemudian ditambahkan nameserver:
+
+```text
+nameserver 8.8.8.8
+nameserver 1.1.1.1
+```
+
+Setelah konfigurasi DNS diperbaiki, dilakukan pengujian kembali menggunakan:
+
+```bash
+ping -c 3 google.com
+```
+
+Hasil pengujian digunakan untuk memastikan node dapat melakukan resolusi nama domain dan terhubung ke internet.
 
