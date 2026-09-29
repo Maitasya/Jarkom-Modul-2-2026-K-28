@@ -861,3 +861,334 @@ EOT
 chmod +x /root/soal7_cek.sh
 /root/soal7_cek.sh
 ```
+## Soal 8: Reverse Zone dan PTR (Master prab, Slave tedd)
+
+### Tujuan
+Mendeklarasikan reverse zone di prab (ns1) untuk segmen tempat abbey, penny, vault, dan core berada, menariknya sebagai slave di tedd (ns2), mengisi PTR, lalu memastikan query reverse dijawab authoritative.
+
+### Pembagian Zona
+
+| Segmen | Zona reverse | Isi |
+|--------|--------------|-----|
+| 192.225.3.0/24 | `3.225.192.in-addr.arpa` | abbey (3.2), penny (3.3) |
+| 192.225.4.0/24 | `4.225.192.in-addr.arpa` | vault (4.2, 4.3), core (4.4, 4.5) |
+
+### Record PTR
+
+| IP | PTR |
+|----|-----|
+| 192.225.3.2 | abbey.k28.com. |
+| 192.225.3.3 | penny.k28.com. |
+| 192.225.4.2 | vault.k28.com. |
+| 192.225.4.3 | vault.k28.com. |
+| 192.225.4.4 | core.k28.com. |
+| 192.225.4.5 | core.k28.com. |
+
+### Hasil
+
+| Query | Jawaban | Flag aa |
+|-------|---------|---------|
+| -x 192.225.3.2 | abbey.k28.com. | Ya |
+| -x 192.225.3.3 | penny.k28.com. | Ya |
+| -x 192.225.4.2 | vault.k28.com. | Ya |
+| -x 192.225.4.4 | core.k28.com. | Ya |
+
+- Query ke prab (`192.225.5.2`) dan tedd (`192.225.5.3`) sama-sama authoritative.
+- Serial kedua reverse zone sama di prab dan tedd (`2026093001`), jadi transfer sudah sinkron.
+
+### Kesimpulan
+Reverse zone untuk segmen 3.x dan 4.x sudah dideklarasikan di prab sebagai master dan ditarik tedd sebagai slave. Pencarian balik alamat abbey, penny, vault, dan core mengembalikan hostname yang benar dan dijawab authoritative oleh kedua server.
+
+### Langkah Pengerjaan (Step by Step)
+
+#### Di prab (master)
+
+**1. Deklarasikan kedua zona di named.conf**
+
+```sh
+cat >> /etc/bind/named.conf <<'EOF'
+
+zone "3.225.192.in-addr.arpa" IN {
+    type master;
+    file "/var/bind/3.225.192.in-addr.arpa";
+    notify yes;
+    also-notify { 192.225.5.3; };
+    allow-transfer { 192.225.5.3; };
+};
+
+zone "4.225.192.in-addr.arpa" IN {
+    type master;
+    file "/var/bind/4.225.192.in-addr.arpa";
+    notify yes;
+    also-notify { 192.225.5.3; };
+    allow-transfer { 192.225.5.3; };
+};
+EOF
+tail -30 /etc/bind/named.conf
+```
+<img width="687" height="645" alt="Screenshot 2026-09-30 013757" src="https://github.com/user-attachments/assets/5a1b8b51-d1c9-4b0d-88f0-d9019c5a1f83" />
+
+
+**2. Buat file zona reverse segmen 3 dan segmen 4**
+
+```sh
+cat > /var/bind/3.225.192.in-addr.arpa <<'EOF'
+$TTL 604800
+@   IN  SOA prab.k28.com. root.k28.com. (
+            2026093001  ; Serial
+            604800      ; Refresh
+            86400       ; Retry
+            2419200     ; Expire
+            604800 )    ; Negative Cache TTL
+;
+@   IN  NS  prab.k28.com.
+@   IN  NS  tedd.k28.com.
+2   IN  PTR abbey.k28.com.
+3   IN  PTR penny.k28.com.
+EOF
+
+cat > /var/bind/4.225.192.in-addr.arpa <<'EOF'
+$TTL 604800
+@   IN  SOA prab.k28.com. root.k28.com. (
+            2026093001  ; Serial
+            604800      ; Refresh
+            86400       ; Retry
+            2419200     ; Expire
+            604800 )    ; Negative Cache TTL
+;
+@   IN  NS  prab.k28.com.
+@   IN  NS  tedd.k28.com.
+2   IN  PTR vault.k28.com.
+3   IN  PTR vault.k28.com.
+4   IN  PTR core.k28.com.
+5   IN  PTR core.k28.com.
+EOF
+
+cat /var/bind/3.225.192.in-addr.arpa
+cat /var/bind/4.225.192.in-addr.arpa
+```
+
+<img width="557" height="589" alt="Screenshot 2026-09-30 013933" src="https://github.com/user-attachments/assets/6dead4f5-08e5-456b-98d2-acf9f18c3162" />
+
+
+**3. Cek konfigurasi dan zona, lalu jalankan ulang named**
+
+```sh
+named-checkconf /etc/bind/named.conf
+named-checkzone 3.225.192.in-addr.arpa /var/bind/3.225.192.in-addr.arpa
+named-checkzone 4.225.192.in-addr.arpa /var/bind/4.225.192.in-addr.arpa
+pkill named; sleep 1; named -u named
+```
+
+<img width="685" height="164" alt="Screenshot 2026-09-30 013954" src="https://github.com/user-attachments/assets/9fc8830a-a5e7-46cc-b5c5-4f76d50f7881" />
+
+
+**4. Tes reverse lookup dari prab**
+
+```sh
+dig @192.225.5.2 -x 192.225.3.2 +short
+dig @192.225.5.2 -x 192.225.4.4 +short
+```
+
+<img width="482" height="115" alt="Screenshot 2026-09-30 014012" src="https://github.com/user-attachments/assets/9106b7f9-ed95-44c5-abb6-8f10b9b01c37" />
+
+
+#### Di tedd (slave)
+
+**5. Deklarasikan zona sebagai slave**
+
+```sh
+cat >> /etc/bind/named.conf <<'EOF'
+
+zone "3.225.192.in-addr.arpa" IN {
+    type slave;
+    masters { 192.225.5.2; };
+    file "/var/bind/slave/3.225.192.in-addr.arpa";
+};
+
+zone "4.225.192.in-addr.arpa" IN {
+    type slave;
+    masters { 192.225.5.2; };
+    file "/var/bind/slave/4.225.192.in-addr.arpa";
+};
+EOF
+named-checkconf /etc/bind/named.conf
+pkill named; sleep 1; named -u named
+sleep 3
+tail -20 /etc/bind/named.conf
+ls /var/bind/slave
+```
+<img width="539" height="491" alt="Screenshot 2026-09-30 014028" src="https://github.com/user-attachments/assets/0e022f89-00b7-4bf4-a463-19b630d51ee4" />
+
+
+#### Verifikasi authoritative
+
+**6. Query ke tedd**
+
+```sh
+dig @192.225.5.3 -x 192.225.3.2 | grep -E "flags|PTR"
+dig @192.225.5.3 -x 192.225.3.3 | grep -E "flags|PTR"
+dig @192.225.5.3 -x 192.225.4.2 | grep -E "flags|PTR"
+dig @192.225.5.3 -x 192.225.4.4 | grep -E "flags|PTR"
+```<img width="669" height="429" alt="Screenshot 2026-09-30 014053" src="https://github.com/user-attachments/assets/aa92e0b7-0f9d-4736-b681-17a7d8341751" />
+
+
+**7. Query ke prab**
+
+```sh
+dig @192.225.5.2 -x 192.225.3.2 | grep -E "flags|PTR"
+dig @192.225.5.2 -x 192.225.3.3 | grep -E "flags|PTR"
+dig @192.225.5.2 -x 192.225.4.2 | grep -E "flags|PTR"
+dig @192.225.5.2 -x 192.225.4.4 | grep -E "flags|PTR"
+```
+
+<img width="664" height="433" alt="Screenshot 2026-09-30 014140" src="https://github.com/user-attachments/assets/df205efd-ba1a-427d-8dc3-5979feb21c93" />
+
+
+**8. Cek sinkronisasi serial**
+
+```sh
+dig @192.225.5.2 3.225.192.in-addr.arpa SOA +short
+dig @192.225.5.3 3.225.192.in-addr.arpa SOA +short
+dig @192.225.5.2 4.225.192.in-addr.arpa SOA +short
+dig @192.225.5.3 4.225.192.in-addr.arpa SOA +short
+```
+<img width="644" height="174" alt="Screenshot 2026-09-30 014225" src="https://github.com/user-attachments/assets/b90ad45a-c31a-4479-aa27-54b64b07b274" />
+
+
+### Versi Otomatis (Script)
+
+Script aman dijalankan ulang: deklarasi zona di `named.conf` hanya ditambah kalau belum ada, dan serial memakai `date +%s` (jadi angkanya berbeda dari langkah manual).
+
+**`soal8_prab.sh` (jalankan di prab)**
+
+```sh
+cat > /root/soal8_prab.sh <<'EOT'
+#!/bin/sh
+echo "=== Soal 8: reverse zone (prab) ==="
+
+CONF="/etc/bind/named.conf"
+SERIAL=$(date +%s)
+
+for z in 3.225.192.in-addr.arpa 4.225.192.in-addr.arpa; do
+    if ! grep -q "zone \"$z\"" $CONF; then
+        cat >> $CONF <<EOF
+
+zone "$z" IN {
+    type master;
+    file "/var/bind/$z";
+    notify yes;
+    also-notify { 192.225.5.3; };
+    allow-transfer { 192.225.5.3; };
+};
+EOF
+    fi
+done
+
+cat > /var/bind/3.225.192.in-addr.arpa <<EOF
+\$TTL 604800
+@   IN  SOA prab.k28.com. root.k28.com. (
+            $SERIAL  ; Serial
+            604800      ; Refresh
+            86400       ; Retry
+            2419200     ; Expire
+            604800 )    ; Negative Cache TTL
+;
+@   IN  NS  prab.k28.com.
+@   IN  NS  tedd.k28.com.
+2   IN  PTR abbey.k28.com.
+3   IN  PTR penny.k28.com.
+EOF
+
+cat > /var/bind/4.225.192.in-addr.arpa <<EOF
+\$TTL 604800
+@   IN  SOA prab.k28.com. root.k28.com. (
+            $SERIAL  ; Serial
+            604800      ; Refresh
+            86400       ; Retry
+            2419200     ; Expire
+            604800 )    ; Negative Cache TTL
+;
+@   IN  NS  prab.k28.com.
+@   IN  NS  tedd.k28.com.
+2   IN  PTR vault.k28.com.
+3   IN  PTR vault.k28.com.
+4   IN  PTR core.k28.com.
+5   IN  PTR core.k28.com.
+EOF
+
+echo "=== Cek konfigurasi ==="
+named-checkconf $CONF || exit 1
+named-checkzone 3.225.192.in-addr.arpa /var/bind/3.225.192.in-addr.arpa || exit 1
+named-checkzone 4.225.192.in-addr.arpa /var/bind/4.225.192.in-addr.arpa || exit 1
+
+echo "=== Muat ulang named ==="
+pkill named 2>/dev/null
+sleep 1
+named -u named
+sleep 2
+
+echo "=== Tes reverse di prab ==="
+for ip in 192.225.3.2 192.225.3.3 192.225.4.2 192.225.4.4; do
+    echo -n "$ip: "
+    dig @192.225.5.2 -x $ip +short
+done
+echo "=== Selesai ==="
+EOT
+chmod +x /root/soal8_prab.sh
+/root/soal8_prab.sh
+```
+
+**`soal8_tedd.sh` (jalankan di tedd, setelah prab)**
+
+```sh
+cat > /root/soal8_tedd.sh <<'EOT'
+#!/bin/sh
+echo "=== Soal 8: reverse zone (tedd) ==="
+
+CONF="/etc/bind/named.conf"
+
+for z in 3.225.192.in-addr.arpa 4.225.192.in-addr.arpa; do
+    if ! grep -q "zone \"$z\"" $CONF; then
+        cat >> $CONF <<EOF
+
+zone "$z" IN {
+    type slave;
+    masters { 192.225.5.2; };
+    file "/var/bind/slave/$z";
+};
+EOF
+    fi
+done
+
+named-checkconf $CONF || exit 1
+
+pkill named 2>/dev/null
+sleep 1
+named -u named
+sleep 3
+
+echo "=== File slave ==="
+ls /var/bind/slave
+
+echo "=== Cek authoritative (harus ada aa) ==="
+for s in 192.225.5.3 192.225.5.2; do
+    echo "--- server $s ---"
+    for ip in 192.225.3.2 192.225.3.3 192.225.4.2 192.225.4.4; do
+        dig @$s -x $ip | grep -E "flags: qr|PTR	" | grep -v "^;"
+        dig @$s -x $ip | grep -E "^; *flags|^;; flags" | head -1
+    done
+done
+
+echo "=== Serial SOA ==="
+for z in 3.225.192.in-addr.arpa 4.225.192.in-addr.arpa; do
+    dig @192.225.5.2 $z SOA +short
+    dig @192.225.5.3 $z SOA +short
+done
+echo "=== Selesai ==="
+EOT
+chmod +x /root/soal8_tedd.sh
+/root/soal8_tedd.sh
+```
+
+Catatan: jangan jalankan ulang `soal4_prab.sh` atau `soal4_tedd.sh` setelah soal 8, karena `named.conf` ditimpa dan deklarasi reverse zone hilang. Kalau terlanjur, jalankan `soal8_prab.sh` lalu `soal8_tedd.sh` untuk memasang kembali.
