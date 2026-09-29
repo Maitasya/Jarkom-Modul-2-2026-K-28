@@ -370,7 +370,8 @@ named -u named
 
 Hasil `named-checkzone` yang benar: `loaded serial 2026092901` dan `OK`.
 
-![named-checkzone](img/4-prab-checkzone.png)
+<img width="742" height="241" alt="Screenshot 2026-09-29 141210" src="https://github.com/user-attachments/assets/8298bcab-537e-4da8-bfa3-7fd19a141003" />
+
 
 ### 3. Verifikasi prab
 
@@ -389,7 +390,10 @@ Hasil yang benar:
 - `NS` menjawab `prab.k28.com.` dan `tedd.k28.com.`.
 - `google.com` menjawab beberapa IP (forwarder dan recursion berjalan).
 
-![dig prab](img/4-prab-dig-aa.png)
+<img width="749" height="502" alt="Screenshot 2026-09-29 141227" src="https://github.com/user-attachments/assets/6b66c800-2de0-4a06-96ef-3b93c6827d3c" />
+<img width="739" height="171" alt="Screenshot 2026-09-29 141246" src="https://github.com/user-attachments/assets/00dc2c2a-8e39-4400-aa0c-976c9b30baaf" />
+
+
 
 ### 4. Konfigurasi tedd (slave)
 
@@ -454,7 +458,11 @@ Hasil yang benar:
 - `dig @192.225.5.3 k28.com` punya `flags: qr aa`, TTL `604800`, jawaban `192.225.3.2`.
 - Serial SOA prab dan tedd sama: `2026092901`.
 
-![tedd slave](img/4-tedd-slave-file.png)
+<img width="736" height="210" alt="Screenshot 2026-09-29 141419" src="https://github.com/user-attachments/assets/6dbc0a90-7e98-4db4-acd0-0b4a175a17db" />
+<img width="738" height="511" alt="Screenshot 2026-09-29 141432" src="https://github.com/user-attachments/assets/236b40d0-6c24-4f3b-a9d6-f56ce2c2a112" />
+<img width="751" height="92" alt="Screenshot 2026-09-29 141746" src="https://github.com/user-attachments/assets/898410dd-a79a-48ce-a92c-157b7e8c128b" />
+<img width="753" height="413" alt="Screenshot 2026-09-29 141758" src="https://github.com/user-attachments/assets/351865ea-47aa-403c-a245-c11651d6dc82" />
+
 
 ### 6. Ubah resolver di semua node non-router
 
