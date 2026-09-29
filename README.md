@@ -17,209 +17,71 @@ Melakukan konfigurasi alamat IP dan default gateway pada seluruh node *The Mesh*
 
 <img width="959" height="415" alt="image" src="https://github.com/user-attachments/assets/6de7ff0a-14f3-425f-a54d-55c880b5ca2b" />
 
-## Tabel Konfigurasi IP
+### Tabel Konfigurasi IP
 
-| No | Node    | Interface | IP Address       | Default Gateway |
-| -: | ------- | --------- | ---------------- | --------------- |
-|  1 | rootkit | eth1      | `192.225.1.1/24` | -               |
-|  2 | rootkit | eth2      | `192.225.2.1/24` | -               |
-|  3 | rootkit | eth3      | `192.225.3.1/24` | -               |
-|  4 | rootkit | eth4      | `192.225.4.1/24` | -               |
-|  5 | rootkit | eth5      | `192.225.5.1/24` | -               |
-|  6 | alpha   | eth0      | `192.225.1.2/24` | `192.225.1.1`   |
-|  7 | beta    | eth0      | `192.225.1.3/24` | `192.225.1.1`   |
-|  8 | gamma   | eth0      | `192.225.1.4/24` | `192.225.1.1`   |
-|  9 | delta   | eth0      | `192.225.2.2/24` | `192.225.2.1`   |
-| 10 | epsilon | eth0      | `192.225.2.3/24` | `192.225.2.1`   |
-| 11 | abbey   | eth0      | `192.225.3.2/24` | `192.225.3.1`   |
-| 12 | penny   | eth0      | `192.225.3.3/24` | `192.225.3.1`   |
-| 13 | obladi  | eth0      | `192.225.4.2/24` | `192.225.4.1`   |
-| 14 | desmond | eth0      | `192.225.4.3/24` | `192.225.4.1`   |
-| 15 | oblada  | eth0      | `192.225.4.4/24` | `192.225.4.1`   |
-| 16 | molly   | eth0      | `192.225.4.5/24` | `192.225.4.1`   |
-| 17 | prab    | eth0      | `192.225.5.2/24` | `192.225.5.1`   |
-| 18 | tedd    | eth0      | `192.225.5.3/24` | `192.225.5.1`   |
+| No | Simpul  | Interface | IP Address     | Gateway     |
+| -- | ------- | --------- | -------------- | ----------- |
+| 1  | rootkit | eth1      | 192.225.5.1/24 | -           |
+| 2  | rootkit | eth2      | 192.225.4.1/24 | -           |
+| 3  | rootkit | eth3      | 192.225.3.1/24 | -           |
+| 4  | rootkit | eth4      | 192.225.1.1/24 | -           |
+| 5  | rootkit | eth5      | 192.225.2.1/24 | -           |
+| 6  | alpha   | eth0      | 192.225.1.2/24 | 192.225.1.1 |
+| 7  | beta    | eth0      | 192.225.1.3/24 | 192.225.1.1 |
+| 8  | gamma   | eth0      | 192.225.1.4/24 | 192.225.1.1 |
+| 9  | delta   | eth0      | 192.225.2.2/24 | 192.225.2.1 |
+| 10 | epsilon | eth0      | 192.225.2.3/24 | 192.225.2.1 |
+| 11 | abbey   | eth0      | 192.225.3.2/24 | 192.225.3.1 |
+| 12 | penny   | eth0      | 192.225.3.3/24 | 192.225.3.1 |
+| 13 | obladi  | eth0      | 192.225.4.2/24 | 192.225.4.1 |
+| 14 | desmond | eth0      | 192.225.4.3/24 | 192.225.4.1 |
+| 15 | oblada  | eth0      | 192.225.4.4/24 | 192.225.4.1 |
+| 16 | molly   | eth0      | 192.225.4.5/24 | 192.225.4.1 |
+| 17 | prab    | eth0      | 192.225.5.2/24 | 192.225.5.1 |
+| 18 | tedd    | eth0      | 192.225.5.3/24 | 192.225.5.1 |
 
-## Konfigurasi IP Address dan Default Gateway
+### Konfigurasi
 
-Pada tahap ini dilakukan konfigurasi IP Address dan Default Gateway pada seluruh node berdasarkan pembagian jaringan pada masing-masing switch.
+Konfigurasi IP pada setiap node dilakukan melalui file `/etc/network/interfaces` dengan format berikut:
 
-### Konfigurasi Rootkit
-
-Konfigurasi pada file `/etc/network/interfaces`:
-
-```text
-auto eth1
-iface eth1 inet static
-    address 192.225.1.1
-    netmask 255.255.255.0
-
-auto eth2
-iface eth2 inet static
-    address 192.225.2.1
-    netmask 255.255.255.0
-
-auto eth3
-iface eth3 inet static
-    address 192.225.3.1
-    netmask 255.255.255.0
-
-auto eth4
-iface eth4 inet static
-    address 192.225.4.1
-    netmask 255.255.255.0
-
-auto eth5
-iface eth5 inet static
-    address 192.225.5.1
-    netmask 255.255.255.0
-```
-
-### Konfigurasi Alpha
-
-```text
+```bash
 auto eth0
 iface eth0 inet static
-    address 192.225.1.2
+    address <IP_ADDRESS>
     netmask 255.255.255.0
-    gateway 192.225.1.1
+    gateway <GATEWAY>
 ```
 
-### Konfigurasi Beta
+Pada `rootkit`, interface `eth1` sampai `eth5` dikonfigurasi sebagai gateway untuk masing-masing jaringan.
 
-```text
-auto eth0
-iface eth0 inet static
-    address 192.225.1.3
-    netmask 255.255.255.0
-    gateway 192.225.1.1
-```
+### Verifikasi
 
-### Konfigurasi Gamma
-
-```text
-auto eth0
-iface eth0 inet static
-    address 192.225.1.4
-    netmask 255.255.255.0
-    gateway 192.225.1.1
-```
-
-### Konfigurasi Delta
-
-```text
-auto eth0
-iface eth0 inet static
-    address 192.225.2.2
-    netmask 255.255.255.0
-    gateway 192.225.2.1
-```
-
-### Konfigurasi Epsilon
-
-```text
-auto eth0
-iface eth0 inet static
-    address 192.225.2.3
-    netmask 255.255.255.0
-    gateway 192.225.2.1
-```
-
-### Konfigurasi Abbey
-
-```text
-auto eth0
-iface eth0 inet static
-    address 192.225.3.2
-    netmask 255.255.255.0
-    gateway 192.225.3.1
-```
-
-### Konfigurasi Penny
-
-```text
-auto eth0
-iface eth0 inet static
-    address 192.225.3.3
-    netmask 255.255.255.0
-    gateway 192.225.3.1
-```
-
-### Konfigurasi Obladi
-
-```text
-auto eth0
-iface eth0 inet static
-    address 192.225.4.2
-    netmask 255.255.255.0
-    gateway 192.225.4.1
-```
-
-### Konfigurasi Desmond
-
-```text
-auto eth0
-iface eth0 inet static
-    address 192.225.4.3
-    netmask 255.255.255.0
-    gateway 192.225.4.1
-```
-
-### Konfigurasi Oblada
-
-```text
-auto eth0
-iface eth0 inet static
-    address 192.225.4.4
-    netmask 255.255.255.0
-    gateway 192.225.4.1
-```
-
-### Konfigurasi Molly
-
-```text
-auto eth0
-iface eth0 inet static
-    address 192.225.4.5
-    netmask 255.255.255.0
-    gateway 192.225.4.1
-```
-
-### Konfigurasi Prab
-
-```text
-auto eth0
-iface eth0 inet static
-    address 192.225.5.2
-    netmask 255.255.255.0
-    gateway 192.225.5.1
-```
-
-### Konfigurasi Tedd
-
-```text
-auto eth0
-iface eth0 inet static
-    address 192.225.5.3
-    netmask 255.255.255.0
-    gateway 192.225.5.1
-```
-
-## Verifikasi
-
-Setelah konfigurasi dilakukan, konfigurasi IP pada setiap node diperiksa menggunakan:
+Konfigurasi IP diperiksa menggunakan:
 
 ```bash
 ip addr
 ```
 
-untuk memastikan alamat IP telah sesuai.
+Untuk melihat IP secara ringkas:
 
-Default gateway dan routing diperiksa menggunakan:
+```bash
+ip -br addr
+```
+
+Default gateway diperiksa menggunakan:
 
 ```bash
 ip route
 ```
+
+Konektivitas kemudian diuji menggunakan:
+
+```bash
+ping -c 4 <IP_GATEWAY>
+```
+
+Hasil verifikasi menunjukkan bahwa alamat IP dan default gateway telah dikonfigurasi sesuai dengan pembagian jaringan pada topologi.
+
 
 Selain pemeriksaan manual, dibuat script `.sh` pada masing-masing node untuk membantu melakukan pengecekan konfigurasi dan konektivitas jaringan. Script tersebut digunakan sebagai verifikasi tambahan terhadap hasil konfigurasi IP dan gateway yang telah diterapkan.
 
