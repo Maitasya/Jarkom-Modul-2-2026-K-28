@@ -270,198 +270,390 @@ ping -c 3 google.com
 Pengujian ini memastikan resolver dapat menerjemahkan nama domain menjadi alamat IP.
 
 ---
-# Soal 4 — Konfigurasi DNS Master dan Slave
+# Soal 4: DNS Master-Slave dan Resolver (K28)
 
-## Tujuan
+## Ringkasan
 
-Membangun DNS authoritative pada `prab` sebagai DNS Master dan `tedd` sebagai DNS Slave untuk zona `k28.com`. Zona memiliki SOA, NS record, A record untuk `prab` dan `tedd`, serta A record apex `k28.com` yang mengarah ke `penny`.
+| Node | Peran | IP |
+|---|---|---|
+| prab | DNS master (ns1) | 192.225.5.2 |
+| tedd | DNS slave (ns2) | 192.225.5.3 |
+| penny | Gerbang aplikasi dinamis (A record apex) | 192.225.3.2 |
 
-## 1. Instalasi BIND
+Tujuan:
+1. prab menjadi master authoritative untuk zona `k28.com` (SOA, NS, A record, notify, allow-transfer, forwarders `192.168.122.1`).
+2. tedd menarik zona dari prab dan menjawab secara authoritative.
+3. Semua node non-router memakai urutan resolver: prab, tedd, `192.168.122.1`.
 
-Instalasi dilakukan pada node **prab** dan **tedd** menggunakan Alpine Linux.
+---
 
-```bash
+## Langkah Pengerjaan
+
+### 1. Persiapan (prab dan tedd)
+
+Pastikan node punya internet dan saling terhubung:
+
+```sh
+cat /etc/resolv.conf
+ping -c 2 google.com
+ping -c 2 192.225.5.3   # dari prab
+ping -c 2 192.225.5.2   # dari tedd
+```
+
+Install bind:
+
+```sh
 apk update
 apk add bind bind-tools
 ```
 
-Kemudian service BIND diaktifkan:
+### 2. Konfigurasi prab (master)
 
-```bash
-rc-update add named
-service named start
-```
+Buat `named.conf`:
 
-## 2. Konfigurasi DNS Master pada Prab
-
-Pada node **prab**, file `/etc/bind/named.conf` dikonfigurasi dengan zona `k28.com`:
-
-```text
-zone "k28.com" {
-    type master;
-    file "/etc/bind/zones/k28.com";
-    notify yes;
-    allow-transfer { 192.225.5.3; };
-    also-notify { 192.225.5.3; };
-};
-```
-
-## 3. Zone File pada Prab
-
-Direktori zona dibuat dengan:
-
-```bash
-mkdir -p /etc/bind/zones
-```
-
-Kemudian file `/etc/bind/zones/k28.com` dibuat dengan isi:
-
-```text
-$TTL 86400
-@   IN  SOA prab.k28.com. admin.k28.com. (
-        2026092801
-        3600
-        1800
-        604800
-        86400
-)
-
-@       IN  NS  prab.k28.com.
-@       IN  NS  tedd.k28.com.
-
-prab    IN  A   192.225.5.2
-tedd    IN  A   192.225.5.3
-
-@       IN  A   192.225.3.3
-```
-
-Dengan konfigurasi tersebut:
-
-* `prab.k28.com` → `192.225.5.2`
-* `tedd.k28.com` → `192.225.5.3`
-* `k28.com` → `192.225.3.3` (`penny`)
-
-## 4. Konfigurasi Forwarder pada Prab
-
-Pada bagian `options` di `/etc/bind/named.conf` ditambahkan:
-
-```text
+```sh
+cat > /etc/bind/named.conf <<'EOF'
 options {
     directory "/var/bind";
-
-    listen-on { any; };
+    pid-file "/var/run/named/named.pid";
+    listen-on { 127.0.0.1; 192.225.5.2; };
     listen-on-v6 { none; };
-
-    allow-query { any; };
-
-    forwarders {
-        192.168.122.1;
-    };
-
+    forwarders { 192.168.122.1; };
+    forward only;
     recursion yes;
+    allow-recursion { any; };
+    allow-query { any; };
+    dnssec-validation no;
 };
+
+zone "k28.com" IN {
+    type master;
+    file "/var/bind/k28.com";
+    notify yes;
+    also-notify { 192.225.5.3; };
+    allow-transfer { 192.225.5.3; };
+};
+EOF
 ```
 
-Forwarder digunakan untuk meneruskan query DNS yang tidak berasal dari zona `k28.com` ke `192.168.122.1`.
+Buat file zona:
 
-## 5. Verifikasi DNS Master
-
-Pada node **prab**, konfigurasi diperiksa menggunakan:
-
-```bash
-named-checkconf
+```sh
+cat > /var/bind/k28.com <<'EOF'
+$TTL 604800
+@   IN  SOA prab.k28.com. root.k28.com. (
+            2026092901  ; Serial
+            604800      ; Refresh
+            86400       ; Retry
+            2419200     ; Expire
+            604800 )    ; Negative Cache TTL
+;
+@       IN  NS  prab.k28.com.
+@       IN  NS  tedd.k28.com.
+prab    IN  A   192.225.5.2
+tedd    IN  A   192.225.5.3
+@       IN  A   192.225.3.2
+EOF
 ```
 
-Kemudian zone diperiksa:
+Cek konfigurasi lalu jalankan named:
 
-```bash
-named-checkzone k28.com /etc/bind/zones/k28.com
+```sh
+named-checkconf /etc/bind/named.conf
+named-checkzone k28.com /var/bind/k28.com
+mkdir -p /var/run/named
+chown named:named /var/run/named
+pkill named
+sleep 1
+named -u named
 ```
 
-Setelah konfigurasi dinyatakan benar, service BIND dijalankan ulang:
+Hasil `named-checkzone` yang benar: `loaded serial 2026092901` dan `OK`.
 
-```bash
-service named restart
+![named-checkzone](img/4-prab-checkzone.png)
+
+### 3. Verifikasi prab
+
+```sh
+dig @192.225.5.2 k28.com
+dig @192.225.5.2 prab.k28.com +short
+dig @192.225.5.2 tedd.k28.com +short
+dig @192.225.5.2 k28.com NS +short
+dig @192.225.5.2 google.com +short
+cat /etc/bind/named.conf
 ```
 
-## 6. Konfigurasi DNS Slave pada Tedd
+Hasil yang benar:
+- `k28.com` punya `flags: qr aa` dan menjawab `192.225.3.2` (IP penny).
+- `prab.k28.com` menjawab `192.225.5.2`, `tedd.k28.com` menjawab `192.225.5.3`.
+- `NS` menjawab `prab.k28.com.` dan `tedd.k28.com.`.
+- `google.com` menjawab beberapa IP (forwarder dan recursion berjalan).
 
-Pada node **tedd**, file `/etc/bind/named.conf` dikonfigurasi:
+![dig prab](img/4-prab-dig-aa.png)
 
-```text
-zone "k28.com" {
+### 4. Konfigurasi tedd (slave)
+
+Siapkan direktori slave (file lama dihapus supaya zona benar-benar ditarik dari prab):
+
+```sh
+mkdir -p /var/bind/slave
+chown named:named /var/bind/slave
+chmod 775 /var/bind/slave
+rm -f /var/bind/slave/k28.com
+```
+
+Buat `named.conf`:
+
+```sh
+cat > /etc/bind/named.conf <<'EOF'
+options {
+    directory "/var/bind";
+    pid-file "/var/run/named/named.pid";
+    listen-on { 127.0.0.1; 192.225.5.3; };
+    listen-on-v6 { none; };
+    forwarders { 192.168.122.1; };
+    forward only;
+    recursion yes;
+    allow-recursion { any; };
+    allow-query { any; };
+    dnssec-validation no;
+};
+
+zone "k28.com" IN {
     type slave;
     masters { 192.225.5.2; };
-    file "/var/bind/k28.com";
+    file "/var/bind/slave/k28.com";
 };
+EOF
 ```
 
-Kemudian service BIND dijalankan ulang:
+Jalankan named (setelah prab menyala):
 
-```bash
-service named restart
+```sh
+named-checkconf /etc/bind/named.conf
+mkdir -p /var/run/named
+chown named:named /var/run/named
+pkill named
+sleep 1
+named -u named
+sleep 5
 ```
 
-Zona diperiksa untuk memastikan proses zone transfer dari `prab` berhasil:
+### 5. Verifikasi tedd
 
-```bash
-ls -l /var/bind/
+```sh
+ls -l /var/bind/slave/
+dig @192.225.5.3 k28.com
+dig @192.225.5.2 k28.com SOA +short
+dig @192.225.5.3 k28.com SOA +short
+cat /etc/bind/named.conf
 ```
 
-## 7. Konfigurasi Resolver pada Entitas Non-Router
+Hasil yang benar:
+- File `k28.com` ada di `/var/bind/slave/` (hasil transfer dari prab).
+- `dig @192.225.5.3 k28.com` punya `flags: qr aa`, TTL `604800`, jawaban `192.225.3.2`.
+- Serial SOA prab dan tedd sama: `2026092901`.
 
-Pada seluruh node selain `rootkit`, file `/etc/resolv.conf` diperbarui menjadi:
+![tedd slave](img/4-tedd-slave-file.png)
 
-```text
+### 6. Ubah resolver di semua node non-router
+
+Node: alpha, beta, gamma, delta, epsilon, prab, tedd, abbey, penny, obladi, desmond, oblada, molly.
+
+```sh
+cat > /root/resolver_soal4.sh <<'EOF'
+#!/bin/sh
+cat > /etc/resolv.conf <<'EOT'
 nameserver 192.225.5.2
 nameserver 192.225.5.3
 nameserver 192.168.122.1
+EOT
+cat /etc/resolv.conf
+EOF
+chmod +x /root/resolver_soal4.sh
+/root/resolver_soal4.sh
 ```
 
-Urutan resolver adalah `prab`, kemudian `tedd`, dan terakhir `192.168.122.1`.
+### 7. Verifikasi resolver (tiap node)
 
-## 8. Verifikasi DNS
-
-Pengujian dilakukan untuk memastikan DNS Master dan Slave dapat menjawab query.
-
-Query ke Master:
-
-```bash
-nslookup k28.com 192.225.5.2
+```sh
+cat /etc/resolv.conf
+dig k28.com +short
+dig prab.k28.com +short
+dig google.com +short
 ```
 
-Query ke Slave:
+Hasil yang benar:
+- Urutan resolver: `192.225.5.2`, `192.225.5.3`, `192.168.122.1`.
+- `k28.com` menjawab `192.225.3.2`.
+- `prab.k28.com` menjawab `192.225.5.2`.
+- `google.com` tetap menjawab.
 
-```bash
-nslookup k28.com 192.225.5.3
+![resolver](img/4-resolver-alpha.png)
+
+---
+
+## Menjalankan Script
+
+Seluruh langkah di atas sudah dibungkus menjadi tiga script yang diletakkan di `/root`.
+
+| Script | Node | Fungsi |
+|---|---|---|
+| `soal4_prab.sh` | prab | Install bind, konfigurasi master, buat zona, jalankan named |
+| `soal4_tedd.sh` | tedd | Install bind, konfigurasi slave, jalankan named |
+| `resolver_soal4.sh` | 13 node non-router | Ubah urutan resolver |
+
+Urutan menjalankan (penting: tedd butuh prab sudah hidup):
+
+```sh
+# 1. Di prab
+chmod +x /root/soal4_prab.sh
+/root/soal4_prab.sh
+
+# 2. Di tedd (setelah prab menyala), lalu tunggu 5-10 detik
+chmod +x /root/soal4_tedd.sh
+/root/soal4_tedd.sh
+
+# 3. Di semua node non-router
+chmod +x /root/resolver_soal4.sh
+/root/resolver_soal4.sh
 ```
 
-Pengujian hostname `prab`:
+Setelah node direstart, `named` tidak menyala otomatis dan `resolv.conf` bisa ter-reset, jadi jalankan ulang ketiga script dengan urutan yang sama.
 
-```bash
-nslookup prab.k28.com 192.225.5.2
+### Isi `soal4_prab.sh`
+
+```sh
+#!/bin/sh
+echo "=== Konfigurasi DNS PRAB - K28 ==="
+
+DOMAIN="k28.com"
+IP_PRAB="192.225.5.2"
+IP_TEDD="192.225.5.3"
+IP_PENNY="192.225.3.2"
+
+apk update
+apk add bind bind-tools
+
+cat > /etc/bind/named.conf <<EOF
+options {
+    directory "/var/bind";
+    pid-file "/var/run/named/named.pid";
+    listen-on { 127.0.0.1; $IP_PRAB; };
+    listen-on-v6 { none; };
+    forwarders { 192.168.122.1; };
+    forward only;
+    recursion yes;
+    allow-recursion { any; };
+    allow-query { any; };
+    dnssec-validation no;
+};
+
+zone "$DOMAIN" IN {
+    type master;
+    file "/var/bind/$DOMAIN";
+    notify yes;
+    also-notify { $IP_TEDD; };
+    allow-transfer { $IP_TEDD; };
+};
+EOF
+
+cat > /var/bind/$DOMAIN <<EOF
+\$TTL 604800
+@   IN  SOA prab.$DOMAIN. root.$DOMAIN. (
+            2026092901  ; Serial
+            604800      ; Refresh
+            86400       ; Retry
+            2419200     ; Expire
+            604800 )    ; Negative Cache TTL
+;
+@       IN  NS  prab.$DOMAIN.
+@       IN  NS  tedd.$DOMAIN.
+prab    IN  A   $IP_PRAB
+tedd    IN  A   $IP_TEDD
+@       IN  A   $IP_PENNY
+EOF
+
+mkdir -p /var/run/named
+chown named:named /var/run/named
+
+echo "=== Cek konfigurasi ==="
+named-checkconf /etc/bind/named.conf
+named-checkzone $DOMAIN /var/bind/$DOMAIN
+
+echo "=== Jalankan named ==="
+pkill named 2>/dev/null
+sleep 1
+named -u named
+
+echo "=== Selesai ==="
 ```
 
-Pengujian hostname `tedd`:
+### Isi `soal4_tedd.sh`
 
-```bash
-nslookup tedd.k28.com 192.225.5.2
+```sh
+#!/bin/sh
+echo "=== Konfigurasi DNS TEDD - K28 ==="
+
+DOMAIN="k28.com"
+IP_PRAB="192.225.5.2"
+IP_TEDD="192.225.5.3"
+
+apk update
+apk add bind bind-tools
+
+mkdir -p /var/bind/slave
+chown named:named /var/bind/slave
+chmod 775 /var/bind/slave
+rm -f /var/bind/slave/$DOMAIN
+
+cat > /etc/bind/named.conf <<EOF
+options {
+    directory "/var/bind";
+    pid-file "/var/run/named/named.pid";
+    listen-on { 127.0.0.1; $IP_TEDD; };
+    listen-on-v6 { none; };
+    forwarders { 192.168.122.1; };
+    forward only;
+    recursion yes;
+    allow-recursion { any; };
+    allow-query { any; };
+    dnssec-validation no;
+};
+
+zone "$DOMAIN" IN {
+    type slave;
+    masters { $IP_PRAB; };
+    file "/var/bind/slave/$DOMAIN";
+};
+EOF
+
+mkdir -p /var/run/named
+chown named:named /var/run/named
+
+echo "=== Cek konfigurasi ==="
+named-checkconf /etc/bind/named.conf
+
+echo "=== Jalankan named ==="
+pkill named 2>/dev/null
+sleep 1
+named -u named
+
+echo "=== Selesai ==="
 ```
 
-Pengujian dari Slave:
+### Isi `resolver_soal4.sh`
 
-```bash
-nslookup k28.com 192.225.5.3
+```sh
+#!/bin/sh
+cat > /etc/resolv.conf <<'EOT'
+nameserver 192.225.5.2
+nameserver 192.225.5.3
+nameserver 192.168.122.1
+EOT
+cat /etc/resolv.conf
 ```
 
-Hasil yang diharapkan:
-
-```text
-k28.com        → 192.225.3.3
-prab.k28.com   → 192.225.5.2
-tedd.k28.com   → 192.225.5.3
-```
-
-Dengan demikian, `prab` berfungsi sebagai DNS Master authoritative dan `tedd` sebagai DNS Slave authoritative untuk zona `k28.com`.
+---
 
 
