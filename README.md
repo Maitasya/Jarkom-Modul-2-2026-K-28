@@ -497,7 +497,7 @@ Hasil yang benar:
 - `prab.k28.com` menjawab `192.225.5.2`.
 - `google.com` tetap menjawab.
 
-![resolver](img/4-resolver-alpha.png)
+
 
 ---
 
