@@ -663,5 +663,201 @@ cat /etc/resolv.conf
 ```
 
 ---
+## Soal 7: Web Server Statis dan Dinamis pada DNS
+
+### Tujuan
+Menambahkan record pada zona `k28.com` untuk mengelompokkan node berdasarkan peran, lalu memverifikasi dari dua klien bahwa hasil resolve konsisten.
+
+### Pembagian Peran
+
+| Node | IP | Peran |
+|------|----|-------|
+| abbey | 192.225.3.2 | Gerbang utama |
+| penny | 192.225.3.3 | Gerbang utama |
+| obladi | 192.225.4.2 | Web statis |
+| desmond | 192.225.4.3 | Web statis |
+| oblada | 192.225.4.4 | Web dinamis |
+| molly | 192.225.4.5 | Web dinamis |
+
+### Record yang Ditambahkan
+
+| Nama | Tipe | Tujuan |
+|------|------|--------|
+| vault.k28.com | A | 192.225.4.2 dan 192.225.4.3 (obladi, desmond) |
+| core.k28.com | A | 192.225.4.4 dan 192.225.4.5 (oblada, molly) |
+| www.k28.com | CNAME | penny.k28.com. |
+| static.k28.com | CNAME | abbey.k28.com. |
+
+### Hasil
+
+| Hostname | Hasil resolve | Sesuai |
+|----------|---------------|--------|
+| vault.k28.com | 192.225.4.2 dan 192.225.4.3 | Ya |
+| core.k28.com | 192.225.4.4 dan 192.225.4.5 | Ya |
+| www.k28.com | penny.k28.com. lalu 192.225.3.3 | Ya |
+| static.k28.com | abbey.k28.com. lalu 192.225.3.2 | Ya |
+
+- Hasil dari alpha, delta, prab, dan tedd identik.
+- Urutan dua IP pada `vault` dan `core` bisa berbeda karena round robin, dan itu normal.
+- Serial SOA di prab dan tedd sama (ganti dengan angka serial dari screenshot).
+
+### Kesimpulan
+Record `vault` dan `core` mengarah ke masing-masing pasangan web statis dan dinamis, sedangkan `www` dan `static` menjadi alias untuk gerbang utama. Hasil resolve konsisten di dua klien dan dua server DNS.
+
+### Langkah Pengerjaan (Step by Step)
+
+**1. Cek isi zona sebelum diubah (di prab)**
+
+```sh
+cat /var/bind/k28.com
+```
+
+**2. Tambahkan record ke zona (di prab)**
+
+```sh
+cat >> /var/bind/k28.com <<'EOF'
+vault   IN  A      192.225.4.2
+vault   IN  A      192.225.4.3
+core    IN  A      192.225.4.4
+core    IN  A      192.225.4.5
+www     IN  CNAME  penny.k28.com.
+static  IN  CNAME  abbey.k28.com.
+EOF
+```
+
+**3. Naikkan serial SOA supaya tedd menarik zona baru (di prab)**
+
+```sh
+sed -i "s/[0-9]\{10\}\( *; Serial\)/$(date +%s)\1/" /var/bind/k28.com
+```
+
+**4. Cek zona lalu muat ulang named (di prab)**
+
+```sh
+named-checkzone k28.com /var/bind/k28.com
+pkill named
+named -u named
+```
+
+**5. Cek isi zona setelah diubah (di prab)**
+
+```sh
+grep -E "^(vault|core|www|static)" /var/bind/k28.com
+```
+
+<img width="740" height="157" alt="Screenshot 2026-09-30 010555" src="https://github.com/user-attachments/assets/2e0b4ae7-6234-4d15-8977-862f7f4f4760" />
 
 
+**6. Tes resolve dari prab**
+
+```sh
+for h in vault core www static; do
+    echo "$h:"; dig @192.225.5.2 $h.k28.com +short
+done
+```
+
+<img width="751" height="331" alt="image" src="https://github.com/user-attachments/assets/aa26d957-9426-42b7-8ac5-95f4836ff51e" />
+
+
+**7. Verifikasi dari klien pertama (alpha)**
+
+Kalau `dig` belum ada: `apk add bind-tools`
+
+```sh
+for h in vault core www static; do
+    echo "$h:"; dig @192.225.5.2 $h.k28.com +short
+done
+```
+<img width="746" height="421" alt="Screenshot 2026-09-30 010719" src="https://github.com/user-attachments/assets/b21cfc65-a811-4f9d-a976-714fc4736fd1" />
+
+
+**8. Verifikasi dari klien kedua (delta)**
+
+Perintah sama seperti langkah 7.
+
+<img width="750" height="434" alt="Screenshot 2026-09-30 010741" src="https://github.com/user-attachments/assets/bf3c52fe-933b-4fa9-85d8-bea050e60958" />
+
+
+**9. Cek sinkronisasi ke server slave (tedd)**
+
+```sh
+dig @192.225.5.3 k28.com SOA +short
+for h in vault core www static; do
+    echo "$h:"; dig @192.225.5.3 $h.k28.com +short
+done
+```
+<img width="663" height="407" alt="Screenshot 2026-09-30 010807" src="https://github.com/user-attachments/assets/3c4f8418-014c-4526-b403-2ca6286acae1" />
+
+
+### Versi script
+
+Langkah 2 sampai 6 dirangkum dalam satu script di prab. Aman dijalankan ulang karena record lama dihapus dulu.
+
+```sh
+cat > /root/soal7_prab.sh <<'EOT'
+#!/bin/sh
+echo "=== Soal 7: vault, core, CNAME ==="
+
+ZONA="/var/bind/k28.com"
+
+if [ ! -f "$ZONA" ]; then
+    echo "File zona tidak ada. Jalankan soal4_prab.sh dulu."
+    exit 1
+fi
+
+# Hapus record lama supaya tidak dobel kalau script dijalankan ulang
+for h in vault core www static; do
+    sed -i "/^$h[[:space:]]/d" $ZONA
+done
+
+cat >> $ZONA <<'EOF'
+vault   IN  A      192.225.4.2
+vault   IN  A      192.225.4.3
+core    IN  A      192.225.4.4
+core    IN  A      192.225.4.5
+www     IN  CNAME  penny.k28.com.
+static  IN  CNAME  abbey.k28.com.
+EOF
+
+# Naikkan serial supaya tedd menarik zona baru
+sed -i "s/[0-9]\{10\}\( *; Serial\)/$(date +%s)\1/" $ZONA
+
+named-checkzone k28.com $ZONA || exit 1
+pkill named 2>/dev/null
+sleep 1
+named -u named
+sleep 2
+
+for h in vault core www static; do
+    echo "$h:"
+    dig @192.225.5.2 $h.k28.com +short
+done
+echo "=== Isi zona ==="
+grep -E "^(vault|core|www|static)" $ZONA
+echo "=== Serial SOA ==="
+dig @192.225.5.2 k28.com SOA +short
+echo "=== Selesai ==="
+EOT
+chmod +x /root/soal7_prab.sh
+/root/soal7_prab.sh
+```
+
+Script verifikasi untuk alpha, delta, dan tedd (langkah 7 sampai 9):
+
+```sh
+cat > /root/soal7_cek.sh <<'EOT'
+#!/bin/sh
+echo "=== Cek soal 7 dari $(hostname) ==="
+for s in 192.225.5.2 192.225.5.3; do
+    echo "--- server $s ---"
+    dig @$s k28.com SOA +short
+    for h in vault core www static; do
+        echo "$h:"
+        dig @$s $h.k28.com +short
+    done
+done
+echo "=== Selesai ==="
+EOT
+chmod +x /root/soal7_cek.sh
+/root/soal7_cek.sh
+```
