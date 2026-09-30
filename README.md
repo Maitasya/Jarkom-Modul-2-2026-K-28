@@ -3154,3 +3154,295 @@ Hasil tersebut menunjukkan bahwa user dengan credential yang benar berhasil meng
 
 Basic Authentication berhasil diterapkan pada path `/admin` di node `penny`. Akses tanpa credential menghasilkan **401 Unauthorized**, sedangkan akses menggunakan credential `prabs` berhasil menghasilkan **200 OK**. Path `/admin` juga telah dikecualikan dari reverse proxy sehingga dapat dilayani langsung oleh Apache pada `penny`.
 
+# LAPORAN PRAKTIKUM — SOAL 13
+
+## Konfigurasi Redirect Web Server Penny dan Abbey
+
+### 1. Tujuan
+
+Pada soal nomor 13 dilakukan konfigurasi redirect pada server Penny dan Abbey dengan ketentuan:
+
+* Server **Penny** dengan IP `192.225.3.3` menggunakan redirect **301 Moved Permanently** menuju `http://www.k28.com/`.
+* Server **Abbey** dengan IP `192.225.4.2` menggunakan redirect **302 Moved Temporarily** menuju `http://static.k28.com/`.
+
+---
+
+# 2. Konfigurasi Server Penny
+
+## 2.1 Mengecek IP Address Penny
+
+Perintah:
+
+```bash
+ip addr
+```
+
+IP address Penny yang diperoleh:
+
+```text
+192.225.3.3
+```
+
+## 2.2 Mengecek Web Server Penny
+
+Perintah:
+
+```bash
+httpd -v
+```
+
+Penny menggunakan Apache dengan versi:
+
+```text
+Apache/2.4.68 (Unix)
+```
+
+## 2.3 Mengecek dan Mengaktifkan Modul Rewrite
+
+Konfigurasi Apache diperiksa dengan:
+
+```bash
+httpd -t
+```
+
+Hasil menunjukkan:
+
+```text
+Syntax OK
+```
+
+Kemudian lokasi `mod_rewrite` dicari:
+
+```bash
+find / -name 'mod_rewrite.so' 2>/dev/null
+```
+
+Diperoleh:
+
+```text
+/usr/lib/apache2/mod_rewrite.so
+```
+
+Modul kemudian diaktifkan dengan:
+
+```bash
+echo 'LoadModule rewrite_module /usr/lib/apache2/mod_rewrite.so' > /etc/apache2/conf.d/rewrite.conf
+```
+
+## 2.4 Membuat Konfigurasi Redirect Penny
+
+File konfigurasi:
+
+```text
+/etc/apache2/conf.d/redirect.conf
+```
+
+Isi konfigurasi:
+
+```apache
+<VirtualHost *:80>
+    ServerName penny.k28.com
+
+    RewriteEngine On
+    RewriteRule ^/(.*)$ http://www.k28.com/$1 [R=301,L]
+</VirtualHost>
+```
+
+Konfigurasi tersebut membuat redirect permanen menggunakan HTTP status **301**.
+
+Setelah konfigurasi selesai, Apache direstart:
+
+```bash
+httpd -k restart
+```
+
+## 2.5 Pengujian Redirect Penny
+
+Perintah pengujian:
+
+```bash
+curl -I -H "Host: penny.k28.com" http://192.225.3.3/
+```
+
+Hasil:
+
+```text
+HTTP/1.1 301 Moved Permanently
+Location: http://www.k28.com/
+```
+
+<img width="569" height="158" alt="Screenshot 2026-09-30 234350" src="https://github.com/user-attachments/assets/30e13795-17eb-4953-a16b-0024b427f013" />
+
+
+Hasil tersebut membuktikan bahwa request ke Penny berhasil diarahkan secara permanen ke `http://www.k28.com/`.
+
+---
+
+# 3. Konfigurasi Server Abbey
+
+## 3.1 Mengecek IP Address Abbey
+
+Perintah:
+
+```bash
+ip addr
+```
+
+IP address Abbey yang diperoleh:
+
+```text
+192.225.4.2
+```
+
+## 3.2 Mengecek Web Server Abbey
+
+Percobaan pengecekan Apache:
+
+```bash
+httpd -v
+```
+
+menghasilkan pesan:
+
+```text
+httpd: bind: Address in use
+```
+
+Kemudian dilakukan pengecekan port 80:
+
+```bash
+ss -lntp | grep ':80'
+```
+
+Hasil menunjukkan bahwa port 80 digunakan oleh **Nginx**.
+
+Versi Nginx kemudian diperiksa:
+
+```bash
+nginx -v
+```
+
+Hasil:
+
+```text
+nginx version: nginx/1.28.3
+```
+
+## 3.3 Mengecek Konfigurasi Nginx
+
+Konfigurasi Nginx diperiksa menggunakan:
+
+```bash
+nginx -T 2>&1 | grep -n "server_name"
+```
+
+Ditemukan konfigurasi pada:
+
+```text
+/etc/nginx/http.d/default.conf
+```
+
+## 3.4 Membuat Konfigurasi Redirect Abbey
+
+File konfigurasi dibuka menggunakan:
+
+```bash
+vi /etc/nginx/http.d/default.conf
+```
+
+Kemudian ditambahkan konfigurasi:
+
+```nginx
+server {
+    listen 80 default_server;
+    server_name abbey.k28.com;
+
+    return 302 http://static.k28.com/;
+}
+```
+
+Konfigurasi tersebut membuat redirect sementara menggunakan HTTP status **302** menuju:
+
+```text
+http://static.k28.com/
+```
+
+Setelah konfigurasi selesai, dilakukan pengecekan:
+
+```bash
+nginx -t
+```
+
+Hasil:
+
+```text
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+```
+
+Kemudian konfigurasi diterapkan:
+
+```bash
+nginx -s reload
+```
+
+## 3.5 Pengujian Redirect Abbey Menggunakan Domain
+
+Perintah:
+
+```bash
+curl -I -H "Host: abbey.k28.com" http://192.225.4.2/
+```
+
+Hasil:
+
+```text
+HTTP/1.1 302 Moved Temporarily
+Location: http://static.k28.com/
+```
+<img width="578" height="251" alt="Screenshot 2026-09-30 234431" src="https://github.com/user-attachments/assets/7a4f26d1-6272-4509-b1c0-fb677ed7ad3a" />
+
+
+Hasil tersebut membuktikan bahwa `abbey.k28.com` berhasil diarahkan sementara ke `http://static.k28.com/`.
+
+## 3.6 Pengujian Redirect Abbey Menggunakan IP
+
+Perintah:
+
+```bash
+curl -I http://192.225.4.2/
+```
+
+Hasil:
+
+```text
+HTTP/1.1 302 Moved Temporarily
+Location: http://static.k28.com/
+```
+
+<img width="728" height="316" alt="Screenshot 2026-09-30 234416" src="https://github.com/user-attachments/assets/083f283e-5819-4361-b74b-c9448d5886e6" />
+
+
+Hasil tersebut membuktikan bahwa akses langsung menggunakan IP Abbey juga berhasil diarahkan sementara ke `http://static.k28.com/`.
+
+---
+
+# 4. Hasil Akhir Soal 13
+
+| Server | Akses                           | Status Redirect           | Tujuan                   |
+| ------ | ------------------------------- | ------------------------- | ------------------------ |
+| Penny  | `192.225.3.3` / `penny.k28.com` | **301 Moved Permanently** | `http://www.k28.com/`    |
+| Abbey  | `192.225.4.2` / `abbey.k28.com` | **302 Moved Temporarily** | `http://static.k28.com/` |
+
+---
+
+# 5. Kesimpulan
+
+Pada **Soal 13**, konfigurasi redirect pada server Penny dan Abbey telah berhasil dilakukan.
+
+Server Penny dikonfigurasi menggunakan Apache dengan **HTTP 301 Moved Permanently** menuju `http://www.k28.com/`.
+
+Server Abbey menggunakan Nginx dan dikonfigurasi dengan **HTTP 302 Moved Temporarily** menuju `http://static.k28.com/`.
+
+Berdasarkan hasil pengujian menggunakan `curl`, kedua server telah menghasilkan status HTTP dan alamat redirect sesuai dengan ketentuan soal.
+
