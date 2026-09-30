@@ -2187,3 +2187,779 @@ lynx -reload http://molly.k28.com/profil
 ---
 
 
+# Soal 11 – Reverse Proxy & Load Balancing
+
+## Tujuan
+
+Percobaan ini bertujuan untuk menerapkan **reverse proxy dan load balancing** pada dua area jaringan, yaitu **Vault** dan **Core**.
+
+Konfigurasi yang dibuat:
+
+* **Penny** menggunakan Apache sebagai reverse proxy dan load balancer untuk area Vault.
+
+  * Obladi `192.225.5.4`
+  * Desmond `192.225.5.5`
+* **Abbey** menggunakan Nginx sebagai reverse proxy dan load balancer untuk area Core.
+
+  * Oblada `192.225.5.6`
+  * Molly `192.225.5.7`
+
+Selain melakukan load balancing, kedua gateway dikonfigurasi agar meneruskan informasi pengunjung menggunakan header:
+
+```text
+Host
+X-Real-IP
+```
+
+---
+
+# Bagian A – Apache Reverse Proxy pada Penny
+
+## Langkah 1 – Install Apache
+
+Konfigurasi dilakukan pada node **Penny**.
+
+**Console: `penny`**
+
+Update repository dan install Apache beserta modul proxy:
+
+```sh
+apk update
+apk add apache2 apache2-openrc apache2-proxy
+```
+
+Cek versi Apache:
+
+```sh
+httpd -v
+```
+
+---
+
+## Langkah 2 – Membuat Konfigurasi Load Balancer
+
+Buat konfigurasi Apache:
+
+```sh
+cat > /etc/apache2/conf.d/vault-proxy.conf <<'EOF'
+<Proxy "balancer://vault">
+    BalancerMember "http://192.225.5.4"
+    BalancerMember "http://192.225.5.5"
+    ProxySet lbmethod=byrequests
+</Proxy>
+
+ProxyPreserveHost On
+
+ProxyPass "/" "balancer://vault/"
+ProxyPassReverse "/" "balancer://vault/"
+
+RequestHeader set X-Real-IP "%{REMOTE_ADDR}s"
+EOF
+```
+
+Konfigurasi tersebut membuat Penny meneruskan request ke:
+
+```text
+192.225.5.4 → Obladi
+192.225.5.5 → Desmond
+```
+
+Load balancing menggunakan metode `byrequests`.
+
+`ProxyPreserveHost On` digunakan agar header `Host` dari client tetap diteruskan ke backend.
+
+Sedangkan:
+
+```apache
+RequestHeader set X-Real-IP "%{REMOTE_ADDR}s"
+```
+
+digunakan untuk meneruskan IP pengunjung melalui header `X-Real-IP`.
+
+---
+
+## Langkah 3 – Mengecek Konfigurasi Apache
+
+Jalankan:
+
+```sh
+httpd -t -f /etc/apache2/httpd.conf
+```
+
+Jika muncul:
+
+```text
+Syntax OK
+```
+
+berarti konfigurasi berhasil.
+
+---
+
+## Langkah 4 – Menjalankan Apache
+
+Pada Penny, jalankan:
+
+```sh
+httpd -f /etc/apache2/httpd.conf
+```
+
+Kemudian cek port 80:
+
+```sh
+ss -lntp | grep ':80'
+```
+
+> **Catatan:** Pada Penny sebelumnya terdapat BusyBox `httpd` yang menggunakan port 80. Jika muncul `Address in use`, proses `httpd` lama harus dihentikan terlebih dahulu sebelum menjalankan Apache.
+
+---
+
+## Langkah 5 – Pengujian Backend Vault
+
+Sebelum menguji load balancing, backend diperiksa terlebih dahulu.
+
+### Backend Obladi
+
+Dari Penny:
+
+```sh
+wget -q -O- http://192.225.5.4/
+```
+
+Hasil:
+
+```text
+<h1>OBLADI - VAULT</h1>
+```
+
+### Backend Desmond
+
+```sh
+wget -q -O- http://192.225.5.5/
+```
+
+Hasil:
+
+```text
+<h1>DESMOND - VAULT</h1>
+```
+
+Kedua backend dapat diakses dari Penny.
+
+---
+
+# Bagian B – Backend Vault
+
+## Langkah 6 – Konfigurasi Node Obladi
+
+**Console: `obladi`**
+
+Install Nginx:
+
+```sh
+apk update
+apk add nginx
+```
+
+Buat halaman backend:
+
+```sh
+mkdir -p /var/lib/nginx/html
+
+echo '<h1>OBLADI - VAULT</h1>' > /var/lib/nginx/html/index.html
+```
+
+Kemudian buat konfigurasi Nginx:
+
+```sh
+cat > /etc/nginx/http.d/default.conf <<'EOF'
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    location / {
+        root /var/lib/nginx/html;
+        index index.html;
+    }
+}
+EOF
+```
+
+Cek konfigurasi:
+
+```sh
+nginx -t
+```
+
+Jalankan Nginx:
+
+```sh
+nginx
+```
+
+Tes:
+
+```sh
+wget -q -O- http://127.0.0.1/
+```
+
+Hasil:
+
+```text
+<h1>OBLADI - VAULT</h1>
+```
+
+---
+
+## Langkah 7 – Konfigurasi Node Desmond
+
+**Console: `desmond`**
+
+Install Nginx:
+
+```sh
+apk update
+apk add nginx
+```
+
+Buat halaman backend:
+
+```sh
+mkdir -p /var/lib/nginx/html
+
+echo '<h1>DESMOND - VAULT</h1>' > /var/lib/nginx/html/index.html
+```
+
+Buat konfigurasi:
+
+```sh
+cat > /etc/nginx/http.d/default.conf <<'EOF'
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    location / {
+        root /var/lib/nginx/html;
+        index index.html;
+    }
+}
+EOF
+```
+
+Cek konfigurasi:
+
+```sh
+nginx -t
+```
+
+Jalankan:
+
+```sh
+nginx
+```
+
+Tes:
+
+```sh
+wget -q -O- http://127.0.0.1/
+```
+
+Hasil:
+
+```text
+<h1>DESMOND - VAULT</h1>
+```
+
+---
+
+# Bagian C – Pengujian Load Balancing Penny
+
+## Langkah 8 – Menguji Distribusi Request
+
+Kembali ke **Penny**.
+
+Jalankan beberapa request:
+
+```sh
+for i in 1 2 3 4 5 6; do
+    echo "=== Request $i ==="
+    wget -q -O- http://127.0.0.1/
+    echo
+done
+```
+
+Hasil request menunjukkan bahwa traffic diteruskan ke backend yang berbeda, yaitu:
+
+```text
+<h1>OBLADI - VAULT</h1>
+```
+
+dan:
+
+```text
+<h1>DESMOND - VAULT</h1>
+```
+
+Hal ini membuktikan bahwa Penny berhasil melakukan load balancing ke kedua backend Vault.
+
+<img width="748" height="470" alt="Screenshot 2026-09-30 221644" src="https://github.com/user-attachments/assets/1b828fee-0389-43a2-b8c3-5a2e0901b6ad" />
+
+
+```markdown
+![Load balancing Penny](screenshots/penny-load-balancing.png)
+```
+
+---
+
+## Langkah 9 – Verifikasi Header Penny
+
+Untuk memastikan header `Host` dan `X-Real-IP` dikonfigurasi:
+
+```sh
+grep -E 'ProxyPreserveHost|X-Real-IP' /etc/apache2/conf.d/vault-proxy.conf
+```
+
+Hasil:
+
+```text
+ProxyPreserveHost On
+RequestHeader set X-Real-IP "%{REMOTE_ADDR}s"
+```
+
+<img width="740" height="368" alt="Screenshot 2026-09-30 221613" src="https://github.com/user-attachments/assets/747424fb-762a-4ced-aa2c-8099d72c84a2" />
+
+
+```markdown
+![Header Penny](screenshots/penny-header.png)
+```
+
+---
+
+# Bagian D – Nginx Reverse Proxy pada Abbey
+
+## Langkah 10 – Membuat Konfigurasi Abbey
+
+Konfigurasi dilakukan pada node **Abbey**.
+
+**Console: `abbey`**
+
+Jika Nginx belum tersedia:
+
+```sh
+apk update
+apk add nginx
+```
+
+Buat konfigurasi:
+
+```sh
+cat > /etc/nginx/http.d/default.conf <<'EOF'
+upstream core_backend {
+    server 192.225.5.6;
+    server 192.225.5.7;
+}
+
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    location / {
+        proxy_pass http://core_backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+EOF
+```
+
+Konfigurasi tersebut membuat Abbey meneruskan request ke:
+
+```text
+192.225.5.6 → Oblada
+192.225.5.7 → Molly
+```
+
+Header yang diteruskan:
+
+```nginx
+proxy_set_header Host $host;
+proxy_set_header X-Real-IP $remote_addr;
+```
+
+---
+
+## Langkah 11 – Mengecek dan Reload Nginx
+
+Cek konfigurasi:
+
+```sh
+nginx -t
+```
+
+Jika muncul:
+
+```text
+syntax is ok
+test is successful
+```
+
+reload Nginx:
+
+```sh
+nginx -s reload
+```
+
+<img width="1285" height="174" alt="WhatsApp Image 2026-09-30 at 22 45 46" src="https://github.com/user-attachments/assets/06b16f53-0920-4833-bbbe-f62b7931d5c9" />
+
+
+```markdown
+![Nginx test Abbey](screenshots/abbey-nginx-test.png)
+```
+
+---
+
+# Bagian E – Backend Core
+
+## Langkah 12 – Pengujian Backend Oblada
+
+Backend Core pertama adalah **Oblada**:
+
+```text
+192.225.5.6
+```
+
+Website pada Oblada sudah dikonfigurasi pada soal sebelumnya sehingga tidak perlu diganti untuk Soal 11.
+
+Dari Abbey:
+
+```sh
+wget -q -O- http://192.225.5.6/
+```
+
+Hasil menampilkan halaman yang dikelola oleh:
+
+```text
+node: oblada
+```
+
+Konfigurasi sebelumnya tetap dipertahankan.
+
+---
+
+## Langkah 13 – Pengujian Backend Molly
+
+Backend Core kedua adalah **Molly**:
+
+```text
+192.225.5.7
+```
+
+Dari Abbey:
+
+```sh
+wget -q -O- http://192.225.5.7/
+```
+
+Hasil menampilkan halaman yang dikelola oleh:
+
+```text
+node: molly
+```
+
+Konfigurasi sebelumnya juga tetap dipertahankan.
+
+---
+
+# Bagian F – Pengujian Load Balancing Abbey
+
+## Langkah 14 – Menguji Distribusi Request
+
+Pada console **Abbey**, jalankan:
+
+```sh
+for i in 1 2 3 4 5 6; do
+    echo "=== Request $i ==="
+    wget -q -O- http://127.0.0.1/
+    echo
+done
+```
+
+Hasil pengujian menunjukkan request diteruskan ke:
+
+```text
+node: oblada
+```
+
+dan:
+
+```text
+node: molly
+```
+ hasil yang diperoleh:
+
+<img width="773" height="610" alt="Screenshot 2026-09-30 221720" src="https://github.com/user-attachments/assets/281935e1-7d39-47cf-a5e9-0245a564591f" />
+
+Hasil tersebut membuktikan bahwa Abbey berhasil meneruskan traffic ke kedua backend Core.
+
+```markdown
+![Load balancing Abbey](screenshots/abbey-load-balancing.png)
+```
+
+---
+
+## Langkah 15 – Verifikasi Header Abbey
+
+Jalankan:
+
+```sh
+grep -E 'proxy_set_header (Host|X-Real-IP)' /etc/nginx/http.d/default.conf
+```
+
+Hasil:
+
+```text
+proxy_set_header Host $host;
+proxy_set_header X-Real-IP $remote_addr;
+```
+
+Konfigurasi tersebut memastikan informasi `Host` dan `X-Real-IP` diteruskan oleh Abbey ke backend.
+
+<img width="773" height="610" alt="Screenshot 2026-09-30 221720" src="https://github.com/user-attachments/assets/b7f3868c-69f3-4b4a-8b0f-d51c4589a7fe" />
+
+
+```markdown
+![Header Abbey](screenshots/abbey-header.png)
+```
+
+---
+
+# Kesimpulan
+
+Berdasarkan konfigurasi dan pengujian yang dilakukan, reverse proxy dan load balancing berhasil diterapkan pada area **Vault** dan **Core**.
+
+Pada area Vault, **Penny** menggunakan Apache sebagai reverse proxy dan load balancer untuk meneruskan request ke:
+
+```text
+Obladi  → 192.225.5.4
+Desmond → 192.225.5.5
+```
+
+Pengujian beberapa request menunjukkan bahwa traffic dapat diteruskan ke kedua backend.
+
+Pada area Core, **Abbey** menggunakan Nginx sebagai reverse proxy dan load balancer untuk meneruskan request ke:
+
+```text
+Oblada → 192.225.5.6
+Molly  → 192.225.5.7
+```
+
+Pengujian juga menunjukkan bahwa kedua backend menerima request.
+
+Selain itu, kedua gateway telah dikonfigurasi untuk meneruskan header:
+
+```text
+Host
+X-Real-IP
+```
+
+Dengan demikian, konfigurasi reverse proxy, load balancing, dan forwarding header pada Soal 11 berhasil diterapkan.
+
+---
+
+# Versi Otomatis (Script)
+
+## Node `obladi`
+
+```sh
+cat > soal11_obladi.sh <<'EOF'
+#!/bin/sh
+
+apk update
+apk add nginx
+
+mkdir -p /var/lib/nginx/html
+
+echo '<h1>OBLADI - VAULT</h1>' > /var/lib/nginx/html/index.html
+
+cat > /etc/nginx/http.d/default.conf <<'NGINX'
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    location / {
+        root /var/lib/nginx/html;
+        index index.html;
+    }
+}
+NGINX
+
+nginx -t || exit 1
+nginx 2>/dev/null || nginx -s reload
+
+echo "=== SOAL 11 OBLADI SELESAI ==="
+wget -q -O- http://127.0.0.1/
+echo
+EOF
+
+chmod +x soal11_obladi.sh
+./soal11_obladi.sh
+```
+
+---
+
+## Node `desmond`
+
+```sh
+cat > soal11_desmond.sh <<'EOF'
+#!/bin/sh
+
+apk update
+apk add nginx
+
+mkdir -p /var/lib/nginx/html
+
+echo '<h1>DESMOND - VAULT</h1>' > /var/lib/nginx/html/index.html
+
+cat > /etc/nginx/http.d/default.conf <<'NGINX'
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    location / {
+        root /var/lib/nginx/html;
+        index index.html;
+    }
+}
+NGINX
+
+nginx -t || exit 1
+nginx 2>/dev/null || nginx -s reload
+
+echo "=== SOAL 11 DESMOND SELESAI ==="
+wget -q -O- http://127.0.0.1/
+echo
+EOF
+
+chmod +x soal11_desmond.sh
+./soal11_desmond.sh
+```
+
+---
+
+## Node `penny`
+
+```sh
+cat > soal11_penny.sh <<'EOF'
+#!/bin/sh
+
+apk update
+apk add apache2 apache2-openrc apache2-proxy
+
+cat > /etc/apache2/conf.d/vault-proxy.conf <<'APACHE'
+<Proxy "balancer://vault">
+    BalancerMember "http://192.225.5.4"
+    BalancerMember "http://192.225.5.5"
+    ProxySet lbmethod=byrequests
+</Proxy>
+
+ProxyPreserveHost On
+
+ProxyPass "/" "balancer://vault/"
+ProxyPassReverse "/" "balancer://vault/"
+
+RequestHeader set X-Real-IP "%{REMOTE_ADDR}s"
+APACHE
+
+httpd -t -f /etc/apache2/httpd.conf || exit 1
+
+echo "=== TEST OBLADI ==="
+wget -q -O- http://192.225.5.4/
+echo
+
+echo "=== TEST DESMOND ==="
+wget -q -O- http://192.225.5.5/
+echo
+
+echo "=== HEADER ==="
+grep -E 'ProxyPreserveHost|X-Real-IP' /etc/apache2/conf.d/vault-proxy.conf
+
+httpd -f /etc/apache2/httpd.conf
+
+echo "=== LOAD BALANCING ==="
+
+for i in 1 2 3 4 5 6; do
+    echo "=== Request $i ==="
+    wget -q -O- http://127.0.0.1/
+    echo
+done
+
+echo "=== SOAL 11 PENNY SELESAI ==="
+EOF
+
+chmod +x soal11_penny.sh
+./soal11_penny.sh
+```
+
+> **Catatan:** Jika port 80 masih digunakan oleh BusyBox `httpd`, hentikan proses tersebut terlebih dahulu sebelum menjalankan Apache.
+
+---
+
+## Node `abbey`
+
+```sh
+cat > soal11_abbey.sh <<'EOF'
+#!/bin/sh
+
+apk update
+apk add nginx
+
+cat > /etc/nginx/http.d/default.conf <<'NGINX'
+upstream core_backend {
+    server 192.225.5.6;
+    server 192.225.5.7;
+}
+
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    location / {
+        proxy_pass http://core_backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+NGINX
+
+nginx -t || exit 1
+
+nginx 2>/dev/null || nginx -s reload
+
+echo "=== TEST OBLADA ==="
+wget -q -O- http://192.225.5.6/
+echo
+
+echo "=== TEST MOLLY ==="
+wget -q -O- http://192.225.5.7/
+echo
+
+echo "=== HEADER ==="
+grep -E 'proxy_set_header (Host|X-Real-IP)' /etc/nginx/http.d/default.conf
+
+echo "=== LOAD BALANCING ==="
+
+for i in 1 2 3 4 5 6; do
+    echo "=== Request $i ==="
+    wget -q -O- http://127.0.0.1/
+    echo
+done
+
+echo "=== SOAL 11 ABBEY SELESAI ==="
+EOF
+
+chmod +x soal11_abbey.sh
+./soal11_abbey.sh
+```
+
+> **Catatan:** Script Abbey hanya mengatur reverse proxy pada Abbey. Konfigurasi website yang sudah ada pada Oblada dan Molly dari soal sebelumnya tetap dipertahankan.
+
