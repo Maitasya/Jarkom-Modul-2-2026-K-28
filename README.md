@@ -3446,3 +3446,374 @@ Server Abbey menggunakan Nginx dan dikonfigurasi dengan **HTTP 302 Moved Tempora
 
 Berdasarkan hasil pengujian menggunakan `curl`, kedua server telah menghasilkan status HTTP dan alamat redirect sesuai dengan ketentuan soal.
 
+---
+# Soal 14 — Access Log IP Asli Client
+
+## Tujuan
+
+Memastikan setiap server web di area **vault** dan **core** mencatat IP asli client yang diteruskan oleh gateway, bukan IP dari Penny atau Abbey.
+
+Node yang digunakan:
+
+* Penny → Gateway Vault
+* Abbey → Gateway Core
+* Obladi → Server Vault
+* Desmond → Server Vault
+* Oblada → Server Core
+* Molly → Server Core
+
+## 1. Cek konfigurasi Penny
+
+Pada **Penny**, cek konfigurasi `X-Real-IP`.
+
+```bash
+grep -R "X-Real-IP" /etc/apache2/
+```
+
+Hasil:
+
+```text
+/etc/apache2/conf.d/vault-proxy.conf:RequestHeader set X-Real-IP "%{REMOTE_ADDR}s"
+```
+
+Konfigurasi menunjukkan bahwa Penny meneruskan IP client menggunakan header `X-Real-IP`.
+
+## 2. Cek konfigurasi Abbey
+
+Pada **Abbey**, cek konfigurasi `X-Real-IP`.
+
+```bash
+grep -R "X-Real-IP" /etc/nginx/
+```
+
+Hasil:
+
+```text
+/etc/nginx/http.d/default.conf: proxy_set_header X-Real-IP $remote_addr;
+```
+
+Konfigurasi menunjukkan bahwa Abbey meneruskan IP client menggunakan header `X-Real-IP`.
+
+## 3. Konfigurasi Access Log Obladi
+
+Obladi menggunakan Nginx.
+
+Buat konfigurasi access log yang membaca `X-Real-IP`.
+
+```bash
+cat > /etc/nginx/http.d/realip-log.conf <<'EOF'
+log_format realip '$http_x_real_ip - $remote_user [$time_local] "$request" $status $body_bytes_sent';
+access_log /var/log/nginx/access.log realip;
+EOF
+```
+
+Cek konfigurasi:
+
+```bash
+nginx -t
+```
+
+Jika berhasil:
+
+```text
+syntax is ok
+test is successful
+```
+
+Reload Nginx:
+
+```bash
+nginx -s reload
+```
+
+Cek port 80:
+
+```bash
+ss -ltnp | grep ':80'
+```
+
+Hasil menunjukkan Nginx aktif pada port 80.
+
+Cek access log:
+
+```bash
+tail -n 1 /var/log/nginx/access.log
+```
+
+## 4. Konfigurasi Access Log Desmond
+
+Desmond menggunakan Nginx.
+
+Buat konfigurasi:
+
+```bash
+cat > /etc/nginx/http.d/realip-log.conf <<'EOF'
+log_format realip '$http_x_real_ip - $remote_user [$time_local] "$request" $status $body_bytes_sent';
+access_log /var/log/nginx/access.log realip;
+EOF
+```
+
+Cek:
+
+```bash
+nginx -t
+```
+
+Jika berhasil:
+
+```text
+syntax is ok
+test is successful
+```
+
+Reload:
+
+```bash
+nginx -s reload
+```
+
+Cek port 80:
+
+```bash
+ss -ltnp | grep ':80'
+```
+
+Cek access log:
+
+```bash
+tail -n 1 /var/log/nginx/access.log
+```
+
+## 5. Konfigurasi Access Log Oblada
+
+Pada Oblada digunakan Nginx.
+
+Buat konfigurasi:
+
+```bash
+cat > /etc/nginx/http.d/realip-log.conf <<'EOF'
+log_format realip '$http_x_real_ip - $remote_user [$time_local] "$request" $status $body_bytes_sent';
+access_log /var/log/nginx/access.log realip;
+EOF
+```
+
+Cek:
+
+```bash
+nginx -t
+```
+
+Reload:
+
+```bash
+nginx -s reload
+```
+
+Cek port:
+
+```bash
+ss -ltnp | grep ':80'
+```
+
+Cek access log:
+
+```bash
+tail -n 1 /var/log/nginx/access.log
+```
+
+## 6. Konfigurasi Access Log Molly
+
+Pada Molly digunakan Nginx.
+
+Buat konfigurasi:
+
+```bash
+cat > /etc/nginx/http.d/realip-log.conf <<'EOF'
+log_format realip '$http_x_real_ip - $remote_user [$time_local] "$request" $status $body_bytes_sent';
+access_log /var/log/nginx/access.log realip;
+EOF
+```
+
+Cek:
+
+```bash
+nginx -t
+```
+
+Reload:
+
+```bash
+nginx -s reload
+```
+
+Cek port:
+
+```bash
+ss -ltnp | grep ':80'
+```
+
+Cek access log:
+
+```bash
+tail -n 1 /var/log/nginx/access.log
+```
+
+## 7. Pengujian IP Client
+
+Untuk menguji apakah access log membaca header `X-Real-IP`, dilakukan request dengan IP client.
+
+```bash
+curl -H "X-Real-IP: IP_CLIENT" http://127.0.0.1/
+```
+
+Kemudian cek:
+
+```bash
+tail -n 1 /var/log/nginx/access.log
+```
+
+IP yang muncul pada bagian awal access log merupakan IP yang diterima dari header `X-Real-IP`.
+
+**Catatan:** `IP_CLIENT` diganti dengan IP client yang sebenarnya saat pengujian.
+
+## 8. Pengecekan Port Web Server
+
+Pengecekan dilakukan pada seluruh server backend.
+
+### Obladi
+
+```bash
+ss -ltnp | grep ':80'
+```
+
+### Desmond
+
+```bash
+ss -ltnp | grep ':80'
+```
+
+### Oblada
+
+```bash
+ss -ltnp | grep ':80'
+```
+
+### Molly
+
+```bash
+ss -ltnp | grep ':80'
+```
+
+Hasil menunjukkan bahwa Nginx aktif dan listening pada port 80 di seluruh server backend.
+
+***Screenshot hasil `ss` dari Obladi, Desmond, Oblada, dan Molly:****
+
+<img width="959" height="505" alt="Screenshot 2026-10-01 002304" src="https://github.com/user-attachments/assets/ec078a1b-35f2-4c26-a818-96a217ce3e66" />
+
+## Kesimpulan
+
+Konfigurasi access log pada server web area **vault** dan **core** telah berhasil dilakukan. Penny dan Abbey meneruskan IP asli client menggunakan header `X-Real-IP`. Server backend kemudian dikonfigurasi agar access log membaca header tersebut. Dengan konfigurasi ini, access log mencatat **IP asli client**, bukan IP dari Penny atau Abbey.
+
+# Versi Otomatis (Script)
+
+## 1. Cek Penny
+
+Pada **Penny**:
+
+```bash
+grep -R "X-Real-IP" /etc/apache2/
+```
+
+## 2. Cek Abbey
+
+Pada **Abbey**:
+
+```bash
+grep -R "X-Real-IP" /etc/nginx/
+```
+
+# 3. Script Soal 14
+
+Script dijalankan pada **Obladi, Desmond, Oblada, dan Molly** karena keempat server menggunakan Nginx.
+
+Isi script:
+
+```bash
+cat > /root/soal14.sh <<'EOF'
+#!/bin/sh
+
+echo "=== SOAL 14 - ACCESS LOG ==="
+
+cat > /etc/nginx/http.d/realip-log.conf <<'EOL'
+log_format realip '$http_x_real_ip - $remote_user [$time_local] "$request" $status $body_bytes_sent';
+access_log /var/log/nginx/access.log realip;
+EOL
+
+echo "[1] Cek konfigurasi Nginx..."
+nginx -t || exit 1
+
+echo "[2] Reload Nginx..."
+nginx -s reload
+
+echo "[3] Cek port 80..."
+ss -ltnp | grep ':80'
+
+echo "[4] Access log terakhir..."
+tail -n 1 /var/log/nginx/access.log
+
+echo "=== SOAL 14 SELESAI ==="
+EOF
+```
+
+Kemudian beri izin:
+
+```bash
+chmod +x /root/soal14.sh
+```
+
+Jalankan:
+
+```bash
+/root/soal14.sh
+```
+
+
+## 4. Obladi
+
+Script dijalankan pada **Obladi**.
+
+```bash
+/root/soal14.sh
+```
+
+Script melakukan:
+
+* membuat konfigurasi `X-Real-IP`
+* mengecek Nginx
+* reload Nginx
+* mengecek port 80
+* menampilkan access log terakhir
+
+## 5. Desmond
+
+Pada **Desmond**:
+
+```bash
+/root/soal14.sh
+```
+
+## 6. Oblada
+
+Pada **Oblada**:
+
+```bash
+/root/soal14.sh
+```
+
+## 7. Molly
+
+Pada **Molly**:
+
+```bash
+/root/soal14.sh
+```
