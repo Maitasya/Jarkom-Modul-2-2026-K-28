@@ -2963,3 +2963,194 @@ chmod +x soal11_abbey.sh
 
 > **Catatan:** Script Abbey hanya mengatur reverse proxy pada Abbey. Konfigurasi website yang sudah ada pada Oblada dan Molly dari soal sebelumnya tetap dipertahankan.
 
+---
+# Soal 12 – Basic Authentication pada `/admin`
+
+## Tujuan
+
+Menerapkan **Basic Authentication** pada path `/admin` di node `penny` agar hanya pengguna dengan credential yang benar yang dapat mengaksesnya.
+
+---
+
+## 1. Membuat Direktori `/admin`
+
+**Node: `penny`**
+
+Buat direktori untuk halaman admin:
+
+```sh
+mkdir -p /var/www/localhost/htdocs/admin
+```
+
+Kemudian buat halaman admin sederhana:
+
+```sh
+echo "<h1>Admin Penny</h1><p>Dokumen rahasia sindikat.</p>" > /var/www/localhost/htdocs/admin/index.html
+```
+
+Cek hasilnya:
+
+```sh
+cat /var/www/localhost/htdocs/admin/index.html
+```
+
+## 2. Membuat User untuk Basic Authentication
+
+Install utility `htpasswd`:
+
+```sh
+apk add apache2-utils
+```
+
+Kemudian buat user `prabs`:
+
+```sh
+htpasswd -c /etc/apache2/.htpasswd prabs
+```
+
+Masukkan password sesuai soal ketika diminta.
+
+Jika berhasil akan muncul:
+
+```text
+Adding password for user prabs
+```
+
+
+## 3. Konfigurasi Basic Authentication
+
+Edit konfigurasi Apache:
+
+```sh
+cat >> /etc/apache2/httpd.conf <<'EOF'
+
+<Directory "/var/www/localhost/htdocs/admin">
+    AuthType Basic
+    AuthName "Area Rahasia"
+    AuthUserFile "/etc/apache2/.htpasswd"
+    Require valid-user
+</Directory>
+EOF
+```
+
+Keterangan konfigurasi:
+
+* `AuthType Basic` → menggunakan Basic Authentication.
+* `AuthName` → nama area autentikasi.
+* `AuthUserFile` → lokasi file username dan password.
+* `Require valid-user` → hanya user yang memiliki credential valid yang dapat masuk.
+
+Cek konfigurasi:
+
+```sh
+httpd -t
+```
+
+Hasil yang diharapkan:
+
+```text
+Syntax OK
+```
+
+## 4. Mengecualikan `/admin` dari Reverse Proxy
+
+Pada `penny`, terdapat konfigurasi reverse proxy untuk area vault. Konfigurasi tersebut menggunakan:
+
+```text
+ProxyPass "/" "balancer://vault/"
+```
+
+Agar `/admin` tidak diteruskan ke backend vault, tambahkan pengecualian `/admin`.
+
+Buat ulang konfigurasi:
+
+```sh
+cat > /etc/apache2/conf.d/vault-proxy.conf <<'EOF'
+<Proxy "balancer://vault">
+    BalancerMember "http://192.225.5.4"
+    BalancerMember "http://192.225.5.5"
+    ProxySet lbmethod=byrequests
+</Proxy>
+
+ProxyPreserveHost On
+
+ProxyPass "/admin" "!"
+ProxyPass "/" "balancer://vault/"
+ProxyPassReverse "/" "balancer://vault/"
+
+RequestHeader set X-Real-IP "%{REMOTE_ADDR}s"
+EOF
+```
+
+Pengecualian:
+
+```text
+ProxyPass "/admin" "!"
+```
+
+digunakan agar request `/admin` ditangani langsung oleh Apache `penny`, bukan diteruskan ke backend vault.
+
+## 5. Restart Apache
+
+Restart Apache:
+
+```sh
+httpd -k restart
+```
+
+## 6. Pengujian Tanpa Credential
+
+Pengujian dilakukan menggunakan hostname `penny.k28.com`:
+
+```sh
+curl -i -H "Host: penny.k28.com" http://192.225.3.3/admin/
+```
+
+**Akses tanpa credential ditolak**
+
+<img width="959" height="236" alt="Screenshot 2026-09-30 225211" src="https://github.com/user-attachments/assets/00d19062-bd98-4472-90d7-e263834350cc" />
+
+Hasil yang diperoleh:
+
+```text
+HTTP/1.1 401 Unauthorized
+WWW-Authenticate: Basic realm="Area Rahasia"
+Server: Apache/2.4.68
+```
+
+Hal ini menunjukkan bahwa pengguna tanpa credential tidak dapat mengakses `/admin`.
+
+## 7. Pengujian dengan Credential yang Benar
+
+Gunakan username `prabs` dan password sesuai soal:
+
+```sh
+curl -i -H "Host: penny.k28.com" -u 'prabs:PA​​SSWORD' http://192.225.3.3/admin/
+```
+
+**Akses dengan credential berhasil**
+
+<img width="946" height="187" alt="Screenshot 2026-09-30 225510" src="https://github.com/user-attachments/assets/14e27883-5ae5-4b02-a428-6233f7256286" />
+
+Hasil pengujian:
+
+```text
+HTTP/1.1 200 OK
+Server: Apache/2.4.68
+```
+
+Halaman yang ditampilkan:
+
+```text
+Admin Penny
+Dokumen rahasia sindikat.
+```
+
+Hasil tersebut menunjukkan bahwa user dengan credential yang benar berhasil mengakses halaman `/admin`.
+
+---
+
+## Kesimpulan
+
+Basic Authentication berhasil diterapkan pada path `/admin` di node `penny`. Akses tanpa credential menghasilkan **401 Unauthorized**, sedangkan akses menggunakan credential `prabs` berhasil menghasilkan **200 OK**. Path `/admin` juga telah dikecualikan dari reverse proxy sehingga dapat dilayani langsung oleh Apache pada `penny`.
+
