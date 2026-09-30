@@ -3278,6 +3278,7 @@ Hasil tersebut membuktikan bahwa request ke Penny berhasil diarahkan secara perm
 
 ---
 
+
 # 3. Konfigurasi Server Abbey
 
 ## 3.1 Mengecek IP Address Abbey
@@ -3426,6 +3427,81 @@ Location: http://static.k28.com/
 Hasil tersebut membuktikan bahwa akses langsung menggunakan IP Abbey juga berhasil diarahkan sementara ke `http://static.k28.com/`.
 
 ---
+### Script Konfigurasi Penny
+
+Script konfigurasi Penny disimpan pada:
+
+```text
+/root/soal13_penny.sh
+```
+
+Isi script:
+
+```bash
+#!/bin/sh
+
+# Mengaktifkan mod_rewrite
+echo 'LoadModule rewrite_module /usr/lib/apache2/mod_rewrite.so' > /etc/apache2/conf.d/rewrite.conf
+
+# Membuat konfigurasi redirect Penny
+cat > /etc/apache2/conf.d/redirect.conf <<'EOF'
+<VirtualHost *:80>
+    ServerName penny.k28.com
+
+    RewriteEngine On
+    RewriteRule ^/(.*)$ http://www.k28.com/$1 [R=301,L]
+</VirtualHost>
+EOF
+
+# Mengecek konfigurasi dan restart Apache
+httpd -t && httpd -k restart
+
+echo "=== Soal 13 Penny selesai ==="
+```
+
+Script dibuat executable menggunakan:
+
+```bash
+chmod +x /root/soal13_penny.sh
+```
+
+---
+
+### Script Konfigurasi Abbey
+
+Script konfigurasi Abbey disimpan pada:
+
+```text
+/root/soal13_abbey.sh
+```
+
+Isi script:
+
+```bash
+#!/bin/sh
+
+# Membuat konfigurasi redirect Abbey
+cat > /etc/nginx/http.d/default.conf <<'EOF'
+server {
+    listen 80 default_server;
+    server_name abbey.k28.com;
+
+    return 302 http://static.k28.com/;
+}
+EOF
+
+# Mengecek konfigurasi dan reload Nginx
+nginx -t && nginx -s reload
+
+echo "=== Soal 13 Abbey selesai ==="
+```
+
+Script dibuat executable menggunakan:
+
+```bash
+chmod +x /root/soal13_abbey.sh
+```
+
 
 # 4. Hasil Akhir Soal 13
 
