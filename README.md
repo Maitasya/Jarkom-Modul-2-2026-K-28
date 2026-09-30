@@ -8,121 +8,146 @@
 | A. Algifari Rantiga Isdar | 5027251084 |
 
 ---
+## Soal 1 — Konfigurasi IP Address dan Default Gateway
 
-# Soal 1 — Konfigurasi IP Address dan Default Gateway
+### Tujuan
+Mengatur IP address dan default gateway seluruh node The Mesh dengan prefix `192.225.x.x`. rootkit menjadi router pusat yang menghubungkan lima switch.
 
-## Tujuan
+### Topologi
+Sesuai gambar topologi soal, rootkit tersambung ke lima switch:
 
-Melakukan konfigurasi alamat IP dan default gateway pada seluruh node *The Mesh* sesuai dengan pembagian jaringan pada topologi. Setiap jaringan menggunakan prefix `192.225.x.x`, sedangkan `rootkit` berperan sebagai router/gateway utama yang menghubungkan seluruh jaringan internal.
+| Interface rootkit | Switch | Node | Subnet |
+|---|---|---|---|
+| eth4 | Switch6 | alpha, beta, gamma | 192.225.1.0/24 |
+| eth5 | Switch7 | delta, epsilon | 192.225.2.0/24 |
+| eth3 | Switch5 | penny | 192.225.3.0/24 |
+| eth2 | Switch4 | abbey | 192.225.4.0/24 |
+| eth1 | Switch1 (Switch2 dan Switch3) | prab, tedd, obladi, desmond, oblada, molly | 192.225.5.0/24 |
 
-<img width="959" height="415" alt="image" src="https://github.com/user-attachments/assets/6de7ff0a-14f3-425f-a54d-55c880b5ca2b" />
+<!-- SS: screenshot topologi GNS3 -->
+![Topologi](img/soal1-topologi.png)
 
 ### Tabel Konfigurasi IP
 
-| No | Simpul  | Interface | IP Address     | Gateway     |
-| -- | ------- | --------- | -------------- | ----------- |
-| 1  | rootkit | eth1      | 192.225.5.1/24 | -           |
-| 2  | rootkit | eth2      | 192.225.4.1/24 | -           |
-| 3  | rootkit | eth3      | 192.225.3.1/24 | -           |
-| 4  | rootkit | eth4      | 192.225.1.1/24 | -           |
-| 5  | rootkit | eth5      | 192.225.2.1/24 | -           |
-| 6  | alpha   | eth0      | 192.225.1.2/24 | 192.225.1.1 |
-| 7  | beta    | eth0      | 192.225.1.3/24 | 192.225.1.1 |
-| 8  | gamma   | eth0      | 192.225.1.4/24 | 192.225.1.1 |
-| 9  | delta   | eth0      | 192.225.2.2/24 | 192.225.2.1 |
-| 10 | epsilon | eth0      | 192.225.2.3/24 | 192.225.2.1 |
-| 11 | abbey   | eth0      | 192.225.3.2/24 | 192.225.3.1 |
-| 12 | penny   | eth0      | 192.225.3.3/24 | 192.225.3.1 |
-| 13 | obladi  | eth0      | 192.225.4.2/24 | 192.225.4.1 |
-| 14 | desmond | eth0      | 192.225.4.3/24 | 192.225.4.1 |
-| 15 | oblada  | eth0      | 192.225.4.4/24 | 192.225.4.1 |
-| 16 | molly   | eth0      | 192.225.4.5/24 | 192.225.4.1 |
-| 17 | prab    | eth0      | 192.225.5.2/24 | 192.225.5.1 |
-| 18 | tedd    | eth0      | 192.225.5.3/24 | 192.225.5.1 |
+| No | Simpul | Interface | IP Address | Gateway |
+|----|--------|-----------|------------|---------|
+| 1 | rootkit | eth1 | 192.225.5.1/24 | - |
+| 2 | rootkit | eth2 | 192.225.4.1/24 | - |
+| 3 | rootkit | eth3 | 192.225.3.1/24 | - |
+| 4 | rootkit | eth4 | 192.225.1.1/24 | - |
+| 5 | rootkit | eth5 | 192.225.2.1/24 | - |
+| 6 | alpha | eth0 | 192.225.1.2/24 | 192.225.1.1 |
+| 7 | beta | eth0 | 192.225.1.3/24 | 192.225.1.1 |
+| 8 | gamma | eth0 | 192.225.1.4/24 | 192.225.1.1 |
+| 9 | delta | eth0 | 192.225.2.2/24 | 192.225.2.1 |
+| 10 | epsilon | eth0 | 192.225.2.3/24 | 192.225.2.1 |
+| 11 | abbey | eth0 | 192.225.4.2/24 | 192.225.4.1 |
+| 12 | penny | eth0 | 192.225.3.3/24 | 192.225.3.1 |
+| 13 | obladi | eth0 | 192.225.5.4/24 | 192.225.5.1 |
+| 14 | desmond | eth0 | 192.225.5.5/24 | 192.225.5.1 |
+| 15 | oblada | eth0 | 192.225.5.6/24 | 192.225.5.1 |
+| 16 | molly | eth0 | 192.225.5.7/24 | 192.225.5.1 |
+| 17 | prab | eth0 | 192.225.5.2/24 | 192.225.5.1 |
+| 18 | tedd | eth0 | 192.225.5.3/24 | 192.225.5.1 |
 
-### Konfigurasi
+Node yang IP-nya ikut topologi (abbey di Switch4, repository di Switch3 satu segmen dengan prab dan tedd) diatur mengikuti wiring, karena IP harus cocok dengan switch tempat node tersambung.
 
-Konfigurasi IP pada setiap node dilakukan melalui file `/etc/network/interfaces` dengan format berikut:
+### Langkah Pengerjaan (Step by Step)
 
-```bash
+**1. Tulis `/etc/network/interfaces` (contoh obladi)**
+
+```sh
+cat > /etc/network/interfaces <<'EOF'
+auto lo
+iface lo inet loopback
+
 auto eth0
 iface eth0 inet static
-    address <IP_ADDRESS>
-    netmask 255.255.255.0
-    gateway <GATEWAY>
+address 192.225.5.4
+netmask 255.255.255.0
+gateway 192.225.5.1
+EOF
 ```
 
-Pada `rootkit`, interface `eth1` sampai `eth5` dikonfigurasi sebagai gateway untuk masing-masing jaringan.
+**2. Terapkan IP sekarang tanpa reboot**
 
-### Verifikasi
-
-Konfigurasi IP diperiksa menggunakan:
-
-```bash
-ip addr
+```sh
+ip addr flush dev eth0
+ip addr add 192.225.5.4/24 dev eth0
+ip route replace default via 192.225.5.1
 ```
 
-Untuk melihat IP secara ringkas:
+**3. Verifikasi**
 
-```bash
+```sh
 ip -br addr
-```
-
-Default gateway diperiksa menggunakan:
-
-```bash
 ip route
+ping -c 3 192.225.5.1
+ping -c 3 8.8.8.8
 ```
 
-Konektivitas kemudian diuji menggunakan:
+<!-- SS: ip -br addr, ip route, dan ping berhasil (satu SS untuk satu node, mis. obladi) -->
+![Verifikasi obladi](img/soal1-obladi.png)
 
-```bash
-ping -c 4 <IP_GATEWAY>
+Ulangi untuk node lain dengan IP dan gateway sesuai tabel.
+
+**4. Uji wiring dengan tcpdump (di rootkit)**
+
+```sh
+tcpdump -ni any arp or icmp
 ```
 
-Hasil verifikasi menunjukkan bahwa alamat IP dan default gateway telah dikonfigurasi sesuai dengan pembagian jaringan pada topologi.
+Sambil ping ke gateway dari node, pastikan paket masuk lewat interface rootkit yang sesuai tabel topologi.
 
+### Versi Otomatis (Script)
 
-Selain pemeriksaan manual, dibuat script `.sh` pada masing-masing node untuk membantu melakukan pengecekan konfigurasi dan konektivitas jaringan. Script tersebut digunakan sebagai verifikasi tambahan terhadap hasil konfigurasi IP dan gateway yang telah diterapkan.
+Script `soal1.sh` dibuat di tiap node. Ubah dua baris `IP` dan `GW` sesuai tabel. Contoh di bawah untuk **obladi**:
 
-## Script Verifikasi Node
+```sh
+cat > /root/soal1.sh <<'EOT'
+#!/bin/bash
+IP="192.225.5.4"
+GW="192.225.5.1"
 
-Untuk memastikan konfigurasi jaringan setiap node berjalan dengan baik, digunakan script pengecekan `.sh`. Script digunakan untuk mengecek IP, gateway, routing, koneksi internet, serta konektivitas dengan node lain.
+ip addr flush dev eth0
+ip addr add $IP/24 dev eth0
+ip route replace default via $GW
 
-Script dibuat pada masing-masing node dengan nama:
+cat > /etc/network/interfaces <<EOF
+auto lo
+iface lo inet loopback
 
-| Node    | Script               |
-| ------- | -------------------- |
-| rootkit | `cek_noderootkit.sh` |
-| alpha   | `cek_nodealpha.sh`   |
-| beta    | `cek_nodebeta.sh`    |
-| gamma   | `cek_nodegamma.sh`   |
-| delta   | `cek_nodedelta.sh`   |
-| epsilon | `cek_nodeepsilon.sh` |
-| abbey   | `cek_nodeabbey.sh`   |
-| penny   | `cek_nodepenny.sh`   |
-| prab    | `cek_prab.sh`    |
-| tedd    | `cek_tedd.sh`    |
-| obladi  | `cek_obladi.sh`  |
-| desmond | `cek_desmond.sh` |
-| oblada  | `cek_oblada.sh`  |
-| molly   | `cek_molly.sh`   |
+auto eth0
+iface eth0 inet static
+address $IP
+netmask 255.255.255.0
+gateway $GW
+EOF
 
-Script dijalankan dengan memberikan permission terlebih dahulu:
-
-```bash
-chmod +x cek_noderootkit.sh
+echo "=== IP ADDRESS ==="
+ip -br addr
+echo "=== ROUTING ==="
+ip route
+EOT
+chmod +x /root/soal1.sh
+/root/soal1.sh
 ```
 
-Kemudian dijalankan menggunakan:
+Nilai `IP` dan `GW` untuk node yang berubah:
 
-```bash
-./cek_noderootkit.sh
-```
+| Node | IP | GW |
+|------|----|----|
+| abbey | 192.225.4.2 | 192.225.4.1 |
+| penny | 192.225.3.3 | 192.225.3.1 |
+| obladi | 192.225.5.4 | 192.225.5.1 |
+| desmond | 192.225.5.5 | 192.225.5.1 |
+| oblada | 192.225.5.6 | 192.225.5.1 |
+| molly | 192.225.5.7 | 192.225.5.1 |
 
-Pada node lainnya, nama script disesuaikan dengan nama node. Hasil dari setiap script digunakan untuk memastikan konfigurasi dan konektivitas seluruh node telah berjalan sesuai topologi.
+Script verifikasi `cek_node*.sh` di README sebelumnya tetap dipakai sebagai pengecekan tambahan.
 
 ---
+
 # Soal 2 — Konfigurasi NAT dan Akses Internet
 
 ## Tujuan
@@ -270,46 +295,35 @@ ping -c 3 google.com
 Pengujian ini memastikan resolver dapat menerjemahkan nama domain menjadi alamat IP.
 
 ---
-# Soal 4: DNS Master-Slave dan Resolver (K28)
+## Soal 4: DNS Master-Slave dan Resolver (K28)
 
-## Ringkasan
+### Ringkasan
 
 | Node | Peran | IP |
-|---|---|---|
+|------|-------|----|
 | prab | DNS master (ns1) | 192.225.5.2 |
 | tedd | DNS slave (ns2) | 192.225.5.3 |
-| penny | Gerbang aplikasi dinamis (A record apex) | 192.225.3.2 |
+| penny | Gerbang aplikasi dinamis (A record apex) | 192.225.3.3 |
 
 Tujuan:
-1. prab menjadi master authoritative untuk zona `k28.com` (SOA, NS, A record, notify, allow-transfer, forwarders `192.168.122.1`).
-2. tedd menarik zona dari prab dan menjawab secara authoritative.
-3. Semua node non-router memakai urutan resolver: prab, tedd, `192.168.122.1`.
+- prab menjadi master authoritative untuk zona `k28.com` (SOA, NS, A record, notify, allow-transfer, forwarders `192.168.122.1`).
+- tedd menarik zona dari prab dan menjawab secara authoritative.
+- Semua node non-router memakai urutan resolver: prab, tedd, `192.168.122.1`.
 
----
+### Langkah Pengerjaan
 
-## Langkah Pengerjaan
-
-### 1. Persiapan (prab dan tedd)
-
-Pastikan node punya internet dan saling terhubung:
+**1. Persiapan (prab dan tedd)**
 
 ```sh
 cat /etc/resolv.conf
 ping -c 2 google.com
 ping -c 2 192.225.5.3   # dari prab
 ping -c 2 192.225.5.2   # dari tedd
-```
-
-Install bind:
-
-```sh
 apk update
 apk add bind bind-tools
 ```
 
-### 2. Konfigurasi prab (master)
-
-Buat `named.conf`:
+**2. Konfigurasi prab (master)**
 
 ```sh
 cat > /etc/bind/named.conf <<'EOF'
@@ -336,13 +350,13 @@ zone "k28.com" IN {
 EOF
 ```
 
-Buat file zona:
+File zona. Serial awal sengaja kecil (`1790000001`), lebih kecil dari `date +%s`, supaya perubahan berikutnya yang memakai timestamp selalu dianggap lebih baru oleh tedd:
 
 ```sh
 cat > /var/bind/k28.com <<'EOF'
 $TTL 604800
 @   IN  SOA prab.k28.com. root.k28.com. (
-            2026092901  ; Serial
+            1790000001  ; Serial
             604800      ; Refresh
             86400       ; Retry
             2419200     ; Expire
@@ -352,11 +366,9 @@ $TTL 604800
 @       IN  NS  tedd.k28.com.
 prab    IN  A   192.225.5.2
 tedd    IN  A   192.225.5.3
-@       IN  A   192.225.3.2
+@       IN  A   192.225.3.3
 EOF
 ```
-
-Cek konfigurasi lalu jalankan named:
 
 ```sh
 named-checkconf /etc/bind/named.conf
@@ -368,12 +380,10 @@ sleep 1
 named -u named
 ```
 
-Hasil `named-checkzone` yang benar: `loaded serial 2026092901` dan `OK`.
+<!-- SS: named-checkzone OK, serial 1790000001 -->
+![Checkzone prab](img/soal4-checkzone.png)
 
-<img width="742" height="241" alt="Screenshot 2026-09-29 141210" src="https://github.com/user-attachments/assets/8298bcab-537e-4da8-bfa3-7fd19a141003" />
-
-
-### 3. Verifikasi prab
+**3. Verifikasi prab**
 
 ```sh
 dig @192.225.5.2 k28.com
@@ -381,34 +391,26 @@ dig @192.225.5.2 prab.k28.com +short
 dig @192.225.5.2 tedd.k28.com +short
 dig @192.225.5.2 k28.com NS +short
 dig @192.225.5.2 google.com +short
-cat /etc/bind/named.conf
 ```
 
 Hasil yang benar:
-- `k28.com` punya `flags: qr aa` dan menjawab `192.225.3.2` (IP penny).
+- `k28.com` punya flags `qr aa` dan menjawab `192.225.3.3` (penny).
 - `prab.k28.com` menjawab `192.225.5.2`, `tedd.k28.com` menjawab `192.225.5.3`.
-- `NS` menjawab `prab.k28.com.` dan `tedd.k28.com.`.
-- `google.com` menjawab beberapa IP (forwarder dan recursion berjalan).
+- NS menjawab `prab.k28.com.` dan `tedd.k28.com.`.
+- `google.com` menjawab (forwarder berjalan).
 
-<img width="749" height="502" alt="Screenshot 2026-09-29 141227" src="https://github.com/user-attachments/assets/6b66c800-2de0-4a06-96ef-3b93c6827d3c" />
-<img width="739" height="171" alt="Screenshot 2026-09-29 141246" src="https://github.com/user-attachments/assets/00dc2c2a-8e39-4400-aa0c-976c9b30baaf" />
+<!-- SS: dig k28.com (flags aa, jawaban 192.225.3.3) dan dig lainnya -->
+![Verifikasi prab 1](img/soal4-prab1.png)
+![Verifikasi prab 2](img/soal4-prab2.png)
 
-
-
-### 4. Konfigurasi tedd (slave)
-
-Siapkan direktori slave (file lama dihapus supaya zona benar-benar ditarik dari prab):
+**4. Konfigurasi tedd (slave)**
 
 ```sh
 mkdir -p /var/bind/slave
 chown named:named /var/bind/slave
 chmod 775 /var/bind/slave
 rm -f /var/bind/slave/k28.com
-```
 
-Buat `named.conf`:
-
-```sh
 cat > /etc/bind/named.conf <<'EOF'
 options {
     directory "/var/bind";
@@ -429,11 +431,7 @@ zone "k28.com" IN {
     file "/var/bind/slave/k28.com";
 };
 EOF
-```
 
-Jalankan named (setelah prab menyala):
-
-```sh
 named-checkconf /etc/bind/named.conf
 mkdir -p /var/run/named
 chown named:named /var/run/named
@@ -443,28 +441,22 @@ named -u named
 sleep 5
 ```
 
-### 5. Verifikasi tedd
+**5. Verifikasi tedd**
 
 ```sh
 ls -l /var/bind/slave/
 dig @192.225.5.3 k28.com
 dig @192.225.5.2 k28.com SOA +short
 dig @192.225.5.3 k28.com SOA +short
-cat /etc/bind/named.conf
 ```
 
-Hasil yang benar:
-- File `k28.com` ada di `/var/bind/slave/` (hasil transfer dari prab).
-- `dig @192.225.5.3 k28.com` punya `flags: qr aa`, TTL `604800`, jawaban `192.225.3.2`.
-- Serial SOA prab dan tedd sama: `2026092901`.
+Hasil yang benar: file `k28.com` ada di `/var/bind/slave/`, flags `qr aa`, jawaban `192.225.3.3`, dan serial prab dan tedd sama (`1790000001`).
 
-<img width="736" height="210" alt="Screenshot 2026-09-29 141419" src="https://github.com/user-attachments/assets/6dbc0a90-7e98-4db4-acd0-0b4a175a17db" />
-<img width="738" height="511" alt="Screenshot 2026-09-29 141432" src="https://github.com/user-attachments/assets/236b40d0-6c24-4f3b-a9d6-f56ce2c2a112" />
-<img width="751" height="92" alt="Screenshot 2026-09-29 141746" src="https://github.com/user-attachments/assets/898410dd-a79a-48ce-a92c-157b7e8c128b" />
-<img width="753" height="413" alt="Screenshot 2026-09-29 141758" src="https://github.com/user-attachments/assets/351865ea-47aa-403c-a245-c11651d6dc82" />
+<!-- SS: ls slave, dig @tedd k28.com, dan dua SOA -->
+![Verifikasi tedd 1](img/soal4-tedd1.png)
+![Verifikasi tedd 2](img/soal4-tedd2.png)
 
-
-### 6. Ubah resolver di semua node non-router
+**6. Ubah resolver di semua node non-router**
 
 Node: alpha, beta, gamma, delta, epsilon, prab, tedd, abbey, penny, obladi, desmond, oblada, molly.
 
@@ -482,7 +474,7 @@ chmod +x /root/resolver_soal4.sh
 /root/resolver_soal4.sh
 ```
 
-### 7. Verifikasi resolver (tiap node)
+**7. Verifikasi resolver (tiap node)**
 
 ```sh
 cat /etc/resolv.conf
@@ -491,54 +483,30 @@ dig prab.k28.com +short
 dig google.com +short
 ```
 
-Hasil yang benar:
-- Urutan resolver: `192.225.5.2`, `192.225.5.3`, `192.168.122.1`.
-- `k28.com` menjawab `192.225.3.2`.
-- `prab.k28.com` menjawab `192.225.5.2`.
-- `google.com` tetap menjawab.
+Hasil yang benar: urutan resolver `192.225.5.2`, `192.225.5.3`, `192.168.122.1`. `k28.com` menjawab `192.225.3.3`, `prab.k28.com` menjawab `192.225.5.2`, dan `google.com` tetap menjawab.
 
+<!-- SS: resolv.conf dan hasil dig di salah satu node -->
+![Verifikasi resolver](img/soal4-resolver.png)
 
-
----
-
-## Menjalankan Script
-
-Seluruh langkah di atas sudah dibungkus menjadi tiga script yang diletakkan di `/root`.
+### Versi Otomatis (Script)
 
 | Script | Node | Fungsi |
-|---|---|---|
-| `soal4_prab.sh` | prab | Install bind, konfigurasi master, buat zona, jalankan named |
-| `soal4_tedd.sh` | tedd | Install bind, konfigurasi slave, jalankan named |
-| `resolver_soal4.sh` | 13 node non-router | Ubah urutan resolver |
+|--------|------|--------|
+| soal4_prab.sh | prab | Install bind, konfigurasi master, buat zona, jalankan named |
+| soal4_tedd.sh | tedd | Install bind, konfigurasi slave, jalankan named |
+| resolver_soal4.sh | 13 node non-router | Ubah urutan resolver |
 
-Urutan menjalankan (penting: tedd butuh prab sudah hidup):
-
-```sh
-# 1. Di prab
-chmod +x /root/soal4_prab.sh
-/root/soal4_prab.sh
-
-# 2. Di tedd (setelah prab menyala), lalu tunggu 5-10 detik
-chmod +x /root/soal4_tedd.sh
-/root/soal4_tedd.sh
-
-# 3. Di semua node non-router
-chmod +x /root/resolver_soal4.sh
-/root/resolver_soal4.sh
-```
-
-Setelah node direstart, `named` tidak menyala otomatis dan `resolv.conf` bisa ter-reset, jadi jalankan ulang ketiga script dengan urutan yang sama.
-
-### Isi `soal4_prab.sh`
+**`soal4_prab.sh` (prab)**
 
 ```sh
+cat > /root/soal4_prab.sh <<'EOT'
 #!/bin/sh
 echo "=== Konfigurasi DNS PRAB - K28 ==="
 
 DOMAIN="k28.com"
 IP_PRAB="192.225.5.2"
 IP_TEDD="192.225.5.3"
-IP_PENNY="192.225.3.2"
+IP_PENNY="192.225.3.3"
 
 apk update
 apk add bind bind-tools
@@ -569,7 +537,7 @@ EOF
 cat > /var/bind/$DOMAIN <<EOF
 \$TTL 604800
 @   IN  SOA prab.$DOMAIN. root.$DOMAIN. (
-            2026092901  ; Serial
+            $(date +%s)  ; Serial
             604800      ; Refresh
             86400       ; Retry
             2419200     ; Expire
@@ -593,13 +561,15 @@ echo "=== Jalankan named ==="
 pkill named 2>/dev/null
 sleep 1
 named -u named
-
 echo "=== Selesai ==="
+EOT
+chmod +x /root/soal4_prab.sh
 ```
 
-### Isi `soal4_tedd.sh`
+**`soal4_tedd.sh` (tedd)**
 
 ```sh
+cat > /root/soal4_tedd.sh <<'EOT'
 #!/bin/sh
 echo "=== Konfigurasi DNS TEDD - K28 ==="
 
@@ -610,6 +580,7 @@ IP_TEDD="192.225.5.3"
 apk update
 apk add bind bind-tools
 
+pkill named 2>/dev/null
 mkdir -p /var/bind/slave
 chown named:named /var/bind/slave
 chmod 775 /var/bind/slave
@@ -643,24 +614,178 @@ echo "=== Cek konfigurasi ==="
 named-checkconf /etc/bind/named.conf
 
 echo "=== Jalankan named ==="
+sleep 1
+named -u named
+echo "=== Selesai ==="
+EOT
+chmod +x /root/soal4_tedd.sh
+```
+
+Urutan: `soal4_prab.sh` di prab, lalu `soal4_tedd.sh` di tedd (tunggu 5 sampai 10 detik), lalu `resolver_soal4.sh` di semua node non-router.
+
+---
+## Soal 5: A Record Semua Entitas
+
+### Tujuan
+Menambahkan A record semua entitas ke zona `k28.com` di prab, lalu memastikan tedd menarik zona terbaru.
+
+### Tabel Record
+
+| Hostname | IP |
+|----------|----|
+| rootkit | 192.225.5.1 |
+| alpha | 192.225.1.2 |
+| beta | 192.225.1.3 |
+| gamma | 192.225.1.4 |
+| delta | 192.225.2.2 |
+| epsilon | 192.225.2.3 |
+| abbey | 192.225.4.2 |
+| penny | 192.225.3.3 |
+| obladi | 192.225.5.4 |
+| desmond | 192.225.5.5 |
+| oblada | 192.225.5.6 |
+| molly | 192.225.5.7 |
+
+`prab`, `tedd`, dan apex `k28.com` sudah ada dari soal 4.
+
+### Langkah Pengerjaan (Step by Step)
+
+**1. Cek zona sebelum diubah (prab)**
+
+```sh
+cat /var/bind/k28.com
+```
+
+**2. Tambahkan record (prab)**
+
+```sh
+cat >> /var/bind/k28.com <<'EOF'
+rootkit IN  A   192.225.5.1
+alpha   IN  A   192.225.1.2
+beta    IN  A   192.225.1.3
+gamma   IN  A   192.225.1.4
+delta   IN  A   192.225.2.2
+epsilon IN  A   192.225.2.3
+abbey   IN  A   192.225.4.2
+penny   IN  A   192.225.3.3
+obladi  IN  A   192.225.5.4
+desmond IN  A   192.225.5.5
+oblada  IN  A   192.225.5.6
+molly   IN  A   192.225.5.7
+EOF
+```
+
+**3. Naikkan serial supaya tedd menarik zona baru (prab)**
+
+```sh
+sed -i "s/[0-9]\{10\}\( *; Serial\)/$(date +%s)\1/" /var/bind/k28.com
+```
+
+**4. Cek zona lalu muat ulang named (prab)**
+
+```sh
+named-checkzone k28.com /var/bind/k28.com
+pkill named
+sleep 1
+named -u named
+```
+
+<!-- SS: named-checkzone OK dan serial baru -->
+![Checkzone soal 5](img/soal5-checkzone.png)
+
+**5. Tes semua nama (prab)**
+
+```sh
+for h in rootkit alpha beta gamma delta epsilon prab tedd abbey penny obladi desmond oblada molly; do
+    echo -n "$h: "; dig @192.225.5.2 $h.k28.com +short
+done
+dig @192.225.5.2 k28.com +short
+```
+
+<!-- SS: hasil 14 nama dan apex (192.225.3.3) -->
+![Tes DNS prab](img/soal5-dig.png)
+
+**6. Cek sinkronisasi di tedd**
+
+```sh
+dig @192.225.5.3 k28.com SOA +short
+dig @192.225.5.3 abbey.k28.com +short
+dig @192.225.5.3 molly.k28.com +short
+```
+
+Serial harus sama dengan prab. Kalau tedd masih menjawab data lama, hapus salinan lama:
+
+```sh
+pkill named
+rm -f /var/bind/slave/k28.com
+named -u named
+sleep 4
+```
+
+<!-- SS: serial sama dan jawaban dari tedd -->
+![Sinkronisasi tedd](img/soal5-tedd.png)
+
+### Versi Otomatis (Script)
+
+```sh
+cat > /root/soal5_prab.sh <<'EOT'
+#!/bin/sh
+echo "=== Soal 5: A record semua entitas ==="
+
+ZONA="/var/bind/k28.com"
+
+if [ ! -f "$ZONA" ]; then
+    echo "File zona tidak ada. Jalankan soal4_prab.sh dulu."
+    exit 1
+fi
+
+# Hapus record lama supaya tidak dobel kalau script dijalankan ulang
+for h in rootkit alpha beta gamma delta epsilon abbey penny obladi desmond oblada molly; do
+    sed -i "/^$h[[:space:]]/d" $ZONA
+done
+
+cat >> $ZONA <<'EOF'
+rootkit IN  A   192.225.5.1
+alpha   IN  A   192.225.1.2
+beta    IN  A   192.225.1.3
+gamma   IN  A   192.225.1.4
+delta   IN  A   192.225.2.2
+epsilon IN  A   192.225.2.3
+abbey   IN  A   192.225.4.2
+penny   IN  A   192.225.3.3
+obladi  IN  A   192.225.5.4
+desmond IN  A   192.225.5.5
+oblada  IN  A   192.225.5.6
+molly   IN  A   192.225.5.7
+EOF
+
+# Naikkan serial supaya tedd menarik zona baru
+sed -i "s/[0-9]\{10\}\( *; Serial\)/$(date +%s)\1/" $ZONA
+
+echo "=== Cek zona ==="
+named-checkzone k28.com $ZONA || exit 1
+
+echo "=== Muat ulang named ==="
 pkill named 2>/dev/null
 sleep 1
 named -u named
+sleep 2
 
+echo "=== Tes DNS ==="
+for h in rootkit alpha beta gamma delta epsilon prab tedd abbey penny obladi desmond oblada molly; do
+    echo -n "$h: "
+    dig @192.225.5.2 $h.k28.com +short
+done
+echo -n "k28.com (apex): "
+dig @192.225.5.2 k28.com +short
 echo "=== Selesai ==="
-```
-
-### Isi `resolver_soal4.sh`
-
-```sh
-#!/bin/sh
-cat > /etc/resolv.conf <<'EOT'
-nameserver 192.225.5.2
-nameserver 192.225.5.3
-nameserver 192.168.122.1
 EOT
-cat /etc/resolv.conf
+chmod +x /root/soal5_prab.sh
+/root/soal5_prab.sh
 ```
+
+---
+
 
 ---
 ## Soal 7: Web Server Statis dan Dinamis pada DNS
@@ -672,19 +797,19 @@ Menambahkan record pada zona `k28.com` untuk mengelompokkan node berdasarkan per
 
 | Node | IP | Peran |
 |------|----|-------|
-| abbey | 192.225.3.2 | Gerbang utama |
+| abbey | 192.225.4.2 | Gerbang utama |
 | penny | 192.225.3.3 | Gerbang utama |
-| obladi | 192.225.4.2 | Web statis |
-| desmond | 192.225.4.3 | Web statis |
-| oblada | 192.225.4.4 | Web dinamis |
-| molly | 192.225.4.5 | Web dinamis |
+| obladi | 192.225.5.4 | Web statis (area vault) |
+| desmond | 192.225.5.5 | Web statis (area vault) |
+| oblada | 192.225.5.6 | Web dinamis (area core) |
+| molly | 192.225.5.7 | Web dinamis (area core) |
 
 ### Record yang Ditambahkan
 
 | Nama | Tipe | Tujuan |
 |------|------|--------|
-| vault.k28.com | A | 192.225.4.2 dan 192.225.4.3 (obladi, desmond) |
-| core.k28.com | A | 192.225.4.4 dan 192.225.4.5 (oblada, molly) |
+| vault.k28.com | A | 192.225.5.4 dan 192.225.5.5 (obladi, desmond) |
+| core.k28.com | A | 192.225.5.6 dan 192.225.5.7 (oblada, molly) |
 | www.k28.com | CNAME | penny.k28.com. |
 | static.k28.com | CNAME | abbey.k28.com. |
 
@@ -692,61 +817,68 @@ Menambahkan record pada zona `k28.com` untuk mengelompokkan node berdasarkan per
 
 | Hostname | Hasil resolve | Sesuai |
 |----------|---------------|--------|
-| vault.k28.com | 192.225.4.2 dan 192.225.4.3 | Ya |
-| core.k28.com | 192.225.4.4 dan 192.225.4.5 | Ya |
+| vault.k28.com | 192.225.5.4 dan 192.225.5.5 | Ya |
+| core.k28.com | 192.225.5.6 dan 192.225.5.7 | Ya |
 | www.k28.com | penny.k28.com. lalu 192.225.3.3 | Ya |
-| static.k28.com | abbey.k28.com. lalu 192.225.3.2 | Ya |
+| static.k28.com | abbey.k28.com. lalu 192.225.4.2 | Ya |
 
 - Hasil dari alpha, delta, prab, dan tedd identik.
 - Urutan dua IP pada `vault` dan `core` bisa berbeda karena round robin, dan itu normal.
-- Serial SOA di prab dan tedd sama (ganti dengan angka serial dari screenshot).
+- Serial SOA di prab dan tedd sama (isi dengan angka dari screenshot).
 
 ### Kesimpulan
-Record `vault` dan `core` mengarah ke masing-masing pasangan web statis dan dinamis, sedangkan `www` dan `static` menjadi alias untuk gerbang utama. Hasil resolve konsisten di dua klien dan dua server DNS.
+`vault` dan `core` mengarah ke masing-masing pasangan web statis dan dinamis, sedangkan `www` dan `static` menjadi alias gerbang utama. Hasil resolve konsisten di dua klien dan dua server DNS.
 
 ### Langkah Pengerjaan (Step by Step)
 
-**1. Cek isi zona sebelum diubah (di prab)**
+**1. Cek zona sebelum diubah (prab)**
 
 ```sh
 cat /var/bind/k28.com
 ```
 
-**2. Tambahkan record ke zona (di prab)**
+<!-- SS: zona sebelum ada vault/core/www/static -->
+![Zona awal](img/soal7-zona-awal.png)
+
+**2. Tambahkan record (prab)**
 
 ```sh
 cat >> /var/bind/k28.com <<'EOF'
-vault   IN  A      192.225.4.2
-vault   IN  A      192.225.4.3
-core    IN  A      192.225.4.4
-core    IN  A      192.225.4.5
+vault   IN  A      192.225.5.4
+vault   IN  A      192.225.5.5
+core    IN  A      192.225.5.6
+core    IN  A      192.225.5.7
 www     IN  CNAME  penny.k28.com.
 static  IN  CNAME  abbey.k28.com.
 EOF
 ```
 
-**3. Naikkan serial SOA supaya tedd menarik zona baru (di prab)**
+**3. Naikkan serial (prab)**
 
 ```sh
 sed -i "s/[0-9]\{10\}\( *; Serial\)/$(date +%s)\1/" /var/bind/k28.com
 ```
 
-**4. Cek zona lalu muat ulang named (di prab)**
+**4. Cek zona lalu muat ulang named (prab)**
 
 ```sh
 named-checkzone k28.com /var/bind/k28.com
 pkill named
+sleep 1
 named -u named
 ```
 
-**5. Cek isi zona setelah diubah (di prab)**
+<!-- SS: named-checkzone OK -->
+![Cek zona](img/soal7-checkzone.png)
+
+**5. Cek isi zona setelah diubah (prab)**
 
 ```sh
 grep -E "^(vault|core|www|static)" /var/bind/k28.com
 ```
 
-<img width="740" height="157" alt="Screenshot 2026-09-30 010555" src="https://github.com/user-attachments/assets/2e0b4ae7-6234-4d15-8977-862f7f4f4760" />
-
+<!-- SS: 6 baris record -->
+![Zona di prab](img/soal7-zona.png)
 
 **6. Tes resolve dari prab**
 
@@ -756,8 +888,8 @@ for h in vault core www static; do
 done
 ```
 
-<img width="751" height="331" alt="image" src="https://github.com/user-attachments/assets/aa26d957-9426-42b7-8ac5-95f4836ff51e" />
-
+<!-- SS: hasil dig di prab -->
+![Tes prab](img/soal7-prab.png)
 
 **7. Verifikasi dari klien pertama (alpha)**
 
@@ -768,17 +900,18 @@ for h in vault core www static; do
     echo "$h:"; dig @192.225.5.2 $h.k28.com +short
 done
 ```
-<img width="746" height="421" alt="Screenshot 2026-09-30 010719" src="https://github.com/user-attachments/assets/b21cfc65-a811-4f9d-a976-714fc4736fd1" />
 
+<!-- SS: terminal alpha, prompt alpha:~# terlihat -->
+![Verifikasi alpha](img/soal7-alpha.png)
 
 **8. Verifikasi dari klien kedua (delta)**
 
 Perintah sama seperti langkah 7.
 
-<img width="750" height="434" alt="Screenshot 2026-09-30 010741" src="https://github.com/user-attachments/assets/bf3c52fe-933b-4fa9-85d8-bea050e60958" />
+<!-- SS: terminal delta, prompt delta:~# terlihat -->
+![Verifikasi delta](img/soal7-delta.png)
 
-
-**9. Cek sinkronisasi ke server slave (tedd)**
+**9. Cek sinkronisasi ke tedd**
 
 ```sh
 dig @192.225.5.3 k28.com SOA +short
@@ -786,12 +919,15 @@ for h in vault core www static; do
     echo "$h:"; dig @192.225.5.3 $h.k28.com +short
 done
 ```
-<img width="663" height="407" alt="Screenshot 2026-09-30 010807" src="https://github.com/user-attachments/assets/3c4f8418-014c-4526-b403-2ca6286acae1" />
 
+Kalau tedd masih menjawab data lama: `pkill named; rm -f /var/bind/slave/k28.com; named -u named; sleep 4`, lalu ulangi.
 
-### Versi script
+<!-- SS: serial sama dengan prab, jawaban identik -->
+![Sinkronisasi tedd](img/soal7-tedd.png)
 
-Langkah 2 sampai 6 dirangkum dalam satu script di prab. Aman dijalankan ulang karena record lama dihapus dulu.
+### Versi Otomatis (Script)
+
+`soal7_prab.sh` (di prab):
 
 ```sh
 cat > /root/soal7_prab.sh <<'EOT'
@@ -805,21 +941,19 @@ if [ ! -f "$ZONA" ]; then
     exit 1
 fi
 
-# Hapus record lama supaya tidak dobel kalau script dijalankan ulang
 for h in vault core www static; do
     sed -i "/^$h[[:space:]]/d" $ZONA
 done
 
 cat >> $ZONA <<'EOF'
-vault   IN  A      192.225.4.2
-vault   IN  A      192.225.4.3
-core    IN  A      192.225.4.4
-core    IN  A      192.225.4.5
+vault   IN  A      192.225.5.4
+vault   IN  A      192.225.5.5
+core    IN  A      192.225.5.6
+core    IN  A      192.225.5.7
 www     IN  CNAME  penny.k28.com.
 static  IN  CNAME  abbey.k28.com.
 EOF
 
-# Naikkan serial supaya tedd menarik zona baru
 sed -i "s/[0-9]\{10\}\( *; Serial\)/$(date +%s)\1/" $ZONA
 
 named-checkzone k28.com $ZONA || exit 1
@@ -842,7 +976,7 @@ chmod +x /root/soal7_prab.sh
 /root/soal7_prab.sh
 ```
 
-Script verifikasi untuk alpha, delta, dan tedd (langkah 7 sampai 9):
+`soal7_cek.sh` (di alpha, delta, dan tedd):
 
 ```sh
 cat > /root/soal7_cek.sh <<'EOT'
@@ -861,6 +995,8 @@ EOT
 chmod +x /root/soal7_cek.sh
 /root/soal7_cek.sh
 ```
+
+---
 ## Soal 8: Reverse Zone dan PTR (Master prab, Slave tedd)
 
 ### Tujuan
@@ -870,40 +1006,41 @@ Mendeklarasikan reverse zone di prab (ns1) untuk segmen tempat abbey, penny, vau
 
 | Segmen | Zona reverse | Isi |
 |--------|--------------|-----|
-| 192.225.3.0/24 | `3.225.192.in-addr.arpa` | abbey (3.2), penny (3.3) |
-| 192.225.4.0/24 | `4.225.192.in-addr.arpa` | vault (4.2, 4.3), core (4.4, 4.5) |
+| 192.225.3.0/24 | `3.225.192.in-addr.arpa` | penny (3.3) |
+| 192.225.4.0/24 | `4.225.192.in-addr.arpa` | abbey (4.2) |
+| 192.225.5.0/24 | `5.225.192.in-addr.arpa` | vault (5.4, 5.5), core (5.6, 5.7) |
 
 ### Record PTR
 
 | IP | PTR |
 |----|-----|
-| 192.225.3.2 | abbey.k28.com. |
 | 192.225.3.3 | penny.k28.com. |
-| 192.225.4.2 | vault.k28.com. |
-| 192.225.4.3 | vault.k28.com. |
-| 192.225.4.4 | core.k28.com. |
-| 192.225.4.5 | core.k28.com. |
+| 192.225.4.2 | abbey.k28.com. |
+| 192.225.5.4 | vault.k28.com. |
+| 192.225.5.5 | vault.k28.com. |
+| 192.225.5.6 | core.k28.com. |
+| 192.225.5.7 | core.k28.com. |
 
 ### Hasil
 
 | Query | Jawaban | Flag aa |
 |-------|---------|---------|
-| -x 192.225.3.2 | abbey.k28.com. | Ya |
 | -x 192.225.3.3 | penny.k28.com. | Ya |
-| -x 192.225.4.2 | vault.k28.com. | Ya |
-| -x 192.225.4.4 | core.k28.com. | Ya |
+| -x 192.225.4.2 | abbey.k28.com. | Ya |
+| -x 192.225.5.4 | vault.k28.com. | Ya |
+| -x 192.225.5.6 | core.k28.com. | Ya |
 
 - Query ke prab (`192.225.5.2`) dan tedd (`192.225.5.3`) sama-sama authoritative.
-- Serial kedua reverse zone sama di prab dan tedd (`2026093001`), jadi transfer sudah sinkron.
+- Serial ketiga reverse zone sama di prab dan tedd (isi dengan angka dari screenshot).
 
 ### Kesimpulan
-Reverse zone untuk segmen 3.x dan 4.x sudah dideklarasikan di prab sebagai master dan ditarik tedd sebagai slave. Pencarian balik alamat abbey, penny, vault, dan core mengembalikan hostname yang benar dan dijawab authoritative oleh kedua server.
+Tiga reverse zone (segmen 3.x, 4.x, 5.x) dideklarasikan di prab sebagai master dan ditarik tedd sebagai slave. Pencarian balik alamat penny, abbey, vault, dan core mengembalikan hostname yang benar dan dijawab authoritative oleh kedua server.
 
 ### Langkah Pengerjaan (Step by Step)
 
 #### Di prab (master)
 
-**1. Deklarasikan kedua zona di named.conf**
+**1. Deklarasikan tiga zona di named.conf**
 
 ```sh
 cat >> /etc/bind/named.conf <<'EOF'
@@ -923,19 +1060,42 @@ zone "4.225.192.in-addr.arpa" IN {
     also-notify { 192.225.5.3; };
     allow-transfer { 192.225.5.3; };
 };
+
+zone "5.225.192.in-addr.arpa" IN {
+    type master;
+    file "/var/bind/5.225.192.in-addr.arpa";
+    notify yes;
+    also-notify { 192.225.5.3; };
+    allow-transfer { 192.225.5.3; };
+};
 EOF
-tail -30 /etc/bind/named.conf
+tail -40 /etc/bind/named.conf
 ```
-<img width="687" height="645" alt="Screenshot 2026-09-30 013757" src="https://github.com/user-attachments/assets/5a1b8b51-d1c9-4b0d-88f0-d9019c5a1f83" />
 
+<!-- SS: tiga blok zona master -->
+![Deklarasi zona prab](img/soal8-namedconf-prab.png)
 
-**2. Buat file zona reverse segmen 3 dan segmen 4**
+**2. Buat tiga file zona reverse**
 
 ```sh
 cat > /var/bind/3.225.192.in-addr.arpa <<'EOF'
 $TTL 604800
 @   IN  SOA prab.k28.com. root.k28.com. (
-            2026093001  ; Serial
+            1790000001  ; Serial
+            604800      ; Refresh
+            86400       ; Retry
+            2419200     ; Expire
+            604800 )    ; Negative Cache TTL
+;
+@   IN  NS  prab.k28.com.
+@   IN  NS  tedd.k28.com.
+3   IN  PTR penny.k28.com.
+EOF
+
+cat > /var/bind/4.225.192.in-addr.arpa <<'EOF'
+$TTL 604800
+@   IN  SOA prab.k28.com. root.k28.com. (
+            1790000001  ; Serial
             604800      ; Refresh
             86400       ; Retry
             2419200     ; Expire
@@ -944,13 +1104,12 @@ $TTL 604800
 @   IN  NS  prab.k28.com.
 @   IN  NS  tedd.k28.com.
 2   IN  PTR abbey.k28.com.
-3   IN  PTR penny.k28.com.
 EOF
 
-cat > /var/bind/4.225.192.in-addr.arpa <<'EOF'
+cat > /var/bind/5.225.192.in-addr.arpa <<'EOF'
 $TTL 604800
 @   IN  SOA prab.k28.com. root.k28.com. (
-            2026093001  ; Serial
+            1790000001  ; Serial
             604800      ; Refresh
             86400       ; Retry
             2419200     ; Expire
@@ -958,18 +1117,19 @@ $TTL 604800
 ;
 @   IN  NS  prab.k28.com.
 @   IN  NS  tedd.k28.com.
-2   IN  PTR vault.k28.com.
-3   IN  PTR vault.k28.com.
-4   IN  PTR core.k28.com.
-5   IN  PTR core.k28.com.
+4   IN  PTR vault.k28.com.
+5   IN  PTR vault.k28.com.
+6   IN  PTR core.k28.com.
+7   IN  PTR core.k28.com.
 EOF
 
 cat /var/bind/3.225.192.in-addr.arpa
 cat /var/bind/4.225.192.in-addr.arpa
+cat /var/bind/5.225.192.in-addr.arpa
 ```
 
-<img width="557" height="589" alt="Screenshot 2026-09-30 013933" src="https://github.com/user-attachments/assets/6dead4f5-08e5-456b-98d2-acf9f18c3162" />
-
+<!-- SS: isi tiga file zona reverse -->
+![File zona reverse](img/soal8-zona-reverse.png)
 
 **3. Cek konfigurasi dan zona, lalu jalankan ulang named**
 
@@ -977,21 +1137,22 @@ cat /var/bind/4.225.192.in-addr.arpa
 named-checkconf /etc/bind/named.conf
 named-checkzone 3.225.192.in-addr.arpa /var/bind/3.225.192.in-addr.arpa
 named-checkzone 4.225.192.in-addr.arpa /var/bind/4.225.192.in-addr.arpa
+named-checkzone 5.225.192.in-addr.arpa /var/bind/5.225.192.in-addr.arpa
 pkill named; sleep 1; named -u named
 ```
 
-<img width="685" height="164" alt="Screenshot 2026-09-30 013954" src="https://github.com/user-attachments/assets/9fc8830a-a5e7-46cc-b5c5-4f76d50f7881" />
+<!-- SS: named-checkconf diam, tiga OK -->
+![Cek zona](img/soal8-checkzone.png)
 
-
-**4. Tes reverse lookup dari prab**
+**4. Tes reverse dari prab**
 
 ```sh
-dig @192.225.5.2 -x 192.225.3.2 +short
-dig @192.225.5.2 -x 192.225.4.4 +short
+dig @192.225.5.2 -x 192.225.4.2 +short
+dig @192.225.5.2 -x 192.225.5.6 +short
 ```
 
-<img width="482" height="115" alt="Screenshot 2026-09-30 014012" src="https://github.com/user-attachments/assets/9106b7f9-ed95-44c5-abb6-8f10b9b01c37" />
-
+<!-- SS: abbey.k28.com. dan core.k28.com. -->
+![Reverse prab](img/soal8-dig-prab.png)
 
 #### Di tedd (slave)
 
@@ -1011,56 +1172,66 @@ zone "4.225.192.in-addr.arpa" IN {
     masters { 192.225.5.2; };
     file "/var/bind/slave/4.225.192.in-addr.arpa";
 };
+
+zone "5.225.192.in-addr.arpa" IN {
+    type slave;
+    masters { 192.225.5.2; };
+    file "/var/bind/slave/5.225.192.in-addr.arpa";
+};
 EOF
 named-checkconf /etc/bind/named.conf
 pkill named; sleep 1; named -u named
 sleep 3
-tail -20 /etc/bind/named.conf
+tail -30 /etc/bind/named.conf
 ls /var/bind/slave
 ```
-<img width="539" height="491" alt="Screenshot 2026-09-30 014028" src="https://github.com/user-attachments/assets/0e022f89-00b7-4bf4-a463-19b630d51ee4" />
 
+Hasil yang benar: `ls` menampilkan empat file (`k28.com` dan tiga zona reverse).
+
+<!-- SS: deklarasi slave dan empat file -->
+![Slave tedd](img/soal8-slave-tedd.png)
 
 #### Verifikasi authoritative
 
 **6. Query ke tedd**
 
 ```sh
-dig @192.225.5.3 -x 192.225.3.2 | grep -E "flags|PTR"
-dig @192.225.5.3 -x 192.225.3.3 | grep -E "flags|PTR"
-dig @192.225.5.3 -x 192.225.4.2 | grep -E "flags|PTR"
-dig @192.225.5.3 -x 192.225.4.4 | grep -E "flags|PTR"
-```<img width="669" height="429" alt="Screenshot 2026-09-30 014053" src="https://github.com/user-attachments/assets/aa92e0b7-0f9d-4736-b681-17a7d8341751" />
+for ip in 192.225.3.3 192.225.4.2 192.225.5.4 192.225.5.6; do
+    dig @192.225.5.3 -x $ip +noall +comments +answer | grep -E "^;; flags|PTR"
+done
+```
 
+<!-- SS: flag aa dan PTR benar dari tedd -->
+![Authoritative tedd](img/soal8-aa-tedd.png)
 
 **7. Query ke prab**
 
 ```sh
-dig @192.225.5.2 -x 192.225.3.2 | grep -E "flags|PTR"
-dig @192.225.5.2 -x 192.225.3.3 | grep -E "flags|PTR"
-dig @192.225.5.2 -x 192.225.4.2 | grep -E "flags|PTR"
-dig @192.225.5.2 -x 192.225.4.4 | grep -E "flags|PTR"
+for ip in 192.225.3.3 192.225.4.2 192.225.5.4 192.225.5.6; do
+    dig @192.225.5.2 -x $ip +noall +comments +answer | grep -E "^;; flags|PTR"
+done
 ```
 
-<img width="664" height="433" alt="Screenshot 2026-09-30 014140" src="https://github.com/user-attachments/assets/df205efd-ba1a-427d-8dc3-5979feb21c93" />
-
+<!-- SS: flag aa dan PTR benar dari prab -->
+![Authoritative prab](img/soal8-aa-prab.png)
 
 **8. Cek sinkronisasi serial**
 
 ```sh
-dig @192.225.5.2 3.225.192.in-addr.arpa SOA +short
-dig @192.225.5.3 3.225.192.in-addr.arpa SOA +short
-dig @192.225.5.2 4.225.192.in-addr.arpa SOA +short
-dig @192.225.5.3 4.225.192.in-addr.arpa SOA +short
+for z in 3 4 5; do
+    dig @192.225.5.2 $z.225.192.in-addr.arpa SOA +short
+    dig @192.225.5.3 $z.225.192.in-addr.arpa SOA +short
+done
 ```
-<img width="644" height="174" alt="Screenshot 2026-09-30 014225" src="https://github.com/user-attachments/assets/b90ad45a-c31a-4479-aa27-54b64b07b274" />
 
+<!-- SS: serial sama di keenam baris -->
+![Sinkronisasi serial](img/soal8-serial.png)
 
 ### Versi Otomatis (Script)
 
-Script aman dijalankan ulang: deklarasi zona di `named.conf` hanya ditambah kalau belum ada, dan serial memakai `date +%s` (jadi angkanya berbeda dari langkah manual).
+Script aman dijalankan ulang: deklarasi zona hanya ditambah kalau belum ada, dan serial memakai `date +%s`.
 
-**`soal8_prab.sh` (jalankan di prab)**
+**`soal8_prab.sh` (prab)**
 
 ```sh
 cat > /root/soal8_prab.sh <<'EOT'
@@ -1070,7 +1241,7 @@ echo "=== Soal 8: reverse zone (prab) ==="
 CONF="/etc/bind/named.conf"
 SERIAL=$(date +%s)
 
-for z in 3.225.192.in-addr.arpa 4.225.192.in-addr.arpa; do
+for z in 3.225.192.in-addr.arpa 4.225.192.in-addr.arpa 5.225.192.in-addr.arpa; do
     if ! grep -q "zone \"$z\"" $CONF; then
         cat >> $CONF <<EOF
 
@@ -1085,7 +1256,9 @@ EOF
     fi
 done
 
-cat > /var/bind/3.225.192.in-addr.arpa <<EOF
+mkzone() {
+    # $1 = zona, $2 = isi PTR
+    cat > /var/bind/$1 <<EOF
 \$TTL 604800
 @   IN  SOA prab.k28.com. root.k28.com. (
             $SERIAL  ; Serial
@@ -1096,31 +1269,22 @@ cat > /var/bind/3.225.192.in-addr.arpa <<EOF
 ;
 @   IN  NS  prab.k28.com.
 @   IN  NS  tedd.k28.com.
-2   IN  PTR abbey.k28.com.
-3   IN  PTR penny.k28.com.
+$2
 EOF
+}
 
-cat > /var/bind/4.225.192.in-addr.arpa <<EOF
-\$TTL 604800
-@   IN  SOA prab.k28.com. root.k28.com. (
-            $SERIAL  ; Serial
-            604800      ; Refresh
-            86400       ; Retry
-            2419200     ; Expire
-            604800 )    ; Negative Cache TTL
-;
-@   IN  NS  prab.k28.com.
-@   IN  NS  tedd.k28.com.
-2   IN  PTR vault.k28.com.
-3   IN  PTR vault.k28.com.
-4   IN  PTR core.k28.com.
-5   IN  PTR core.k28.com.
-EOF
+mkzone 3.225.192.in-addr.arpa "3   IN  PTR penny.k28.com."
+mkzone 4.225.192.in-addr.arpa "2   IN  PTR abbey.k28.com."
+mkzone 5.225.192.in-addr.arpa "4   IN  PTR vault.k28.com.
+5   IN  PTR vault.k28.com.
+6   IN  PTR core.k28.com.
+7   IN  PTR core.k28.com."
 
 echo "=== Cek konfigurasi ==="
 named-checkconf $CONF || exit 1
-named-checkzone 3.225.192.in-addr.arpa /var/bind/3.225.192.in-addr.arpa || exit 1
-named-checkzone 4.225.192.in-addr.arpa /var/bind/4.225.192.in-addr.arpa || exit 1
+for z in 3 4 5; do
+    named-checkzone $z.225.192.in-addr.arpa /var/bind/$z.225.192.in-addr.arpa || exit 1
+done
 
 echo "=== Muat ulang named ==="
 pkill named 2>/dev/null
@@ -1129,7 +1293,7 @@ named -u named
 sleep 2
 
 echo "=== Tes reverse di prab ==="
-for ip in 192.225.3.2 192.225.3.3 192.225.4.2 192.225.4.4; do
+for ip in 192.225.3.3 192.225.4.2 192.225.5.4 192.225.5.6; do
     echo -n "$ip: "
     dig @192.225.5.2 -x $ip +short
 done
@@ -1139,7 +1303,7 @@ chmod +x /root/soal8_prab.sh
 /root/soal8_prab.sh
 ```
 
-**`soal8_tedd.sh` (jalankan di tedd, setelah prab)**
+**`soal8_tedd.sh` (tedd, jalankan setelah prab)**
 
 ```sh
 cat > /root/soal8_tedd.sh <<'EOT'
@@ -1148,7 +1312,7 @@ echo "=== Soal 8: reverse zone (tedd) ==="
 
 CONF="/etc/bind/named.conf"
 
-for z in 3.225.192.in-addr.arpa 4.225.192.in-addr.arpa; do
+for z in 3.225.192.in-addr.arpa 4.225.192.in-addr.arpa 5.225.192.in-addr.arpa; do
     if ! grep -q "zone \"$z\"" $CONF; then
         cat >> $CONF <<EOF
 
@@ -1163,10 +1327,12 @@ done
 
 named-checkconf $CONF || exit 1
 
+# Hapus salinan lama supaya selalu menarik versi terbaru dari prab
 pkill named 2>/dev/null
 sleep 1
+rm -f /var/bind/slave/k28.com /var/bind/slave/*.in-addr.arpa
 named -u named
-sleep 3
+sleep 4
 
 echo "=== File slave ==="
 ls /var/bind/slave
@@ -1174,16 +1340,15 @@ ls /var/bind/slave
 echo "=== Cek authoritative (harus ada aa) ==="
 for s in 192.225.5.3 192.225.5.2; do
     echo "--- server $s ---"
-    for ip in 192.225.3.2 192.225.3.3 192.225.4.2 192.225.4.4; do
-        dig @$s -x $ip | grep -E "flags: qr|PTR	" | grep -v "^;"
-        dig @$s -x $ip | grep -E "^; *flags|^;; flags" | head -1
+    for ip in 192.225.3.3 192.225.4.2 192.225.5.4 192.225.5.6; do
+        dig @$s -x $ip +noall +comments +answer | grep -E "^;; flags|PTR"
     done
 done
 
 echo "=== Serial SOA ==="
-for z in 3.225.192.in-addr.arpa 4.225.192.in-addr.arpa; do
-    dig @192.225.5.2 $z SOA +short
-    dig @192.225.5.3 $z SOA +short
+for z in 3 4 5; do
+    dig @192.225.5.2 $z.225.192.in-addr.arpa SOA +short
+    dig @192.225.5.3 $z.225.192.in-addr.arpa SOA +short
 done
 echo "=== Selesai ==="
 EOT
@@ -1191,4 +1356,23 @@ chmod +x /root/soal8_tedd.sh
 /root/soal8_tedd.sh
 ```
 
-Catatan: jangan jalankan ulang `soal4_prab.sh` atau `soal4_tedd.sh` setelah soal 8, karena `named.conf` ditimpa dan deklarasi reverse zone hilang. Kalau terlanjur, jalankan `soal8_prab.sh` lalu `soal8_tedd.sh` untuk memasang kembali.
+---
+
+## Urutan Menjalankan Semua Script
+
+Setelah node direstart (named tidak menyala otomatis dan `soal4_*` menimpa `named.conf` serta zona), jalankan berurutan:
+
+```sh
+# prab
+/root/soal4_prab.sh
+/root/soal5_prab.sh
+/root/soal7_prab.sh
+/root/soal8_prab.sh
+
+# tedd
+/root/soal4_tedd.sh
+/root/soal8_tedd.sh
+
+# semua node non-router
+/root/resolver_soal4.sh
+```ne hilang. Kalau terlanjur, jalankan `soal8_prab.sh` lalu `soal8_tedd.sh` untuk memasang kembali.
