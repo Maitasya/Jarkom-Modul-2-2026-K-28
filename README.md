@@ -1709,4 +1709,481 @@ Dilakukan dari node yang digunakan untuk pengujian, misalnya `delta`:
 curl http://vault.k28.com/arsip/
 ```
 
+---
+# Soal 10 – Web Dinamis PHP-FPM dengan Nginx
+
+## Tujuan
+
+Percobaan ini bertujuan untuk menjalankan layanan web dinamis menggunakan **Nginx dan PHP-FPM** pada node **Oblada** di area core. Website dibuat sederhana dengan dua halaman, yaitu halaman beranda dan halaman profil. Selain itu, diterapkan aturan rewrite agar halaman profil dapat diakses menggunakan URL `/profil` tanpa menuliskan `.php`. Pengujian dilakukan menggunakan hostname `oblada.k28.com`.
+
+---
+
+## Langkah 1 – Masuk ke Node Oblada
+
+Konfigurasi web dilakukan pada node **Oblada**.
+
+**Console: `oblada`**
+
+```sh
+apk update
+```
+
+## Langkah 2 – Install Nginx dan PHP-FPM
+
+Masih di console **Oblada**, install Nginx dan PHP-FPM:
+
+```sh
+apk add nginx php84 php84-fpm
+```
+
+Setelah proses selesai, Nginx dan PHP-FPM sudah tersedia untuk digunakan sebagai web server dan pemroses PHP.
+
+## Langkah 3 – Membuat Direktori Website
+
+Buat direktori untuk menyimpan file aplikasi:
+
+```sh
+mkdir -p /var/www/core
+```
+
+Cek direktori:
+
+```sh
+ls -ld /var/www/core
+```
+
+## Langkah 4 – Membuat Halaman Beranda
+
+Buat file `index.php`:
+
+```sh
+cat > /var/www/core/index.php <<'EOF'
+<?php
+echo "<h1>Markas K28</h1>";
+echo "<p>Halo! Selamat datang di markas kecil The Mesh.</p>";
+echo "<p>Kalau error, tenang... kita juga kadang error.</p>";
+echo "<p>Jangan panik, deadline cuma angka.</p>";
+echo "<hr>";
+echo "<p><b>May & AL | Kelompok K28</b></p>";
+echo "<p>Dikelola oleh node: oblada</p>";
+echo "<p><a href='/profil'>Lihat Profil Kami</a></p>";
+?>
+EOF
+```
+
+Cek file:
+
+```sh
+ls -l /var/www/core/
+```
+
+## Langkah 5 – Membuat Halaman Profil
+
+Masih di **Oblada**, buat file `profil.php`:
+
+```sh
+cat > /var/www/core/profil.php <<'EOF'
+<?php
+echo "<h1>Profil Kelompok</h1>";
+echo "<p><b>May & AL</b></p>";
+echo "<p>Kelompok K28 - The Mesh</p>";
+echo "<p>Node: oblada</p>";
+echo "<p><a href='/'>Kembali ke Beranda</a></p>";
+?>
+EOF
+```
+
+Cek kembali:
+
+```sh
+ls -l /var/www/core/
+```
+
+File yang tersedia:
+
+```text
+index.php
+profil.php
+```
+
+## Langkah 6 – Menjalankan PHP-FPM
+
+Jalankan PHP-FPM:
+
+```sh
+php-fpm84
+```
+
+Kemudian cek port PHP-FPM:
+
+```sh
+netstat -tlnp 2>/dev/null | grep 9000
+```
+
+Jika muncul:
+
+```text
+127.0.0.1:9000
+```
+
+berarti PHP-FPM sudah berjalan.
+
+<img width="949" height="97" alt="Screenshot 2026-09-30 214729" src="https://github.com/user-attachments/assets/1958bfc0-556e-42bb-909d-0ef6a156a7f9" />
+
+## Langkah 7 – Membuat Konfigurasi Nginx
+
+Buat direktori konfigurasi:
+
+```sh
+mkdir -p /etc/nginx/http.d
+```
+
+Kemudian buat konfigurasi:
+
+```sh
+cat > /etc/nginx/http.d/core.conf <<'EOF'
+server {
+    listen 80;
+    server_name oblada.k28.com;
+
+    root /var/www/core;
+    index index.php;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location = /profil {
+        rewrite ^/profil$ /profil.php last;
+    }
+
+    location ~ \.php$ {
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_pass 127.0.0.1:9000;
+    }
+}
+EOF
+```
+
+Konfigurasi tersebut membuat hostname `oblada.k28.com` menggunakan direktori `/var/www/core`. Bagian rewrite digunakan agar `/profil` diarahkan ke `profil.php`.
+
+
+## Langkah 8 – Mengecek Konfigurasi Nginx
+
+Jalankan:
+
+```sh
+nginx -t
+```
+
+Jika muncul:
+
+```text
+syntax is ok
+test is successful
+```
+
+berarti konfigurasi Nginx berhasil.
+
+## Langkah 9 – Menjalankan Nginx
+
+Jalankan Nginx:
+
+```sh
+nginx
+```
+
+Jika Nginx sudah berjalan, gunakan:
+
+```sh
+nginx -s reload
+```
+
+Kemudian cek port 80:
+
+```sh
+netstat -tlnp 2>/dev/null | grep ':80'
+```
+
+Pastikan proses yang menggunakan port 80 adalah Nginx.
+
+
+## Langkah 10 – Pengujian Beranda pada Node Oblada
+
+Masih di console **Oblada**, lakukan pengujian menggunakan hostname:
+
+```sh
+curl -s -H "Host: oblada.k28.com" http://127.0.0.1/
+```
+
+Hasil beranda menampilkan:
+
+```text
+Markas K28
+
+Halo! Selamat datang di markas kecil The Mesh.
+Kalau error, tenang... kita juga kadang error.
+Jangan panik, deadline cuma angka.
+
+May & AL | Kelompok K28
+Dikelola oleh node: oblada
+Lihat Profil Kami
+```
+
+
+## Langkah 11 – Pengujian dari Node Delta
+
+Pengujian dari node lain dilakukan menggunakan hostname.
+
+**Console: `delta`**
+
+```sh
+curl http://oblada.k28.com/
+```
+
+Jika halaman beranda tampil, berarti layanan web dapat diakses menggunakan hostname.
+
+## Langkah 12 – Pengujian URL Bersih `/profil`
+
+Masih di **Delta**, jalankan:
+
+```sh
+curl http://oblada.k28.com/profil
+```
+
+Hasilnya menampilkan:
+
+```text
+Profil Kelompok
+
+May & AL
+Kelompok K28 - The Mesh
+Node: oblada
+Kembali ke Beranda
+```
+
+Walaupun file sebenarnya bernama `profil.php`, halaman dapat diakses menggunakan:
+
+```text
+http://oblada.k28.com/profil
+```
+
+tanpa `.php`.
+
+
+## Langkah 13 – Pengujian Menggunakan Lynx
+
+Pengujian juga dilakukan menggunakan browser teks **Lynx**.
+
+**Console: `delta`**
+
+Untuk halaman beranda:
+
+```sh
+lynx -reload http://oblada.k28.com/
+```
+
+<img width="959" height="509" alt="Screenshot 2026-09-30 214445" src="https://github.com/user-attachments/assets/95121f34-9890-45ab-a88a-9d2342a3ca5f" />
+
+<img width="959" height="506" alt="Screenshot 2026-09-30 214530" src="https://github.com/user-attachments/assets/1b9180b6-9989-4298-a6e1-b7775e8e1682" />
+
+Kemudian untuk halaman profil:
+
+```sh
+lynx -reload http://oblada.k28.com/profil
+```
+
+Pada halaman profil ditampilkan informasi:
+
+```text
+May & AL
+Kelompok K28 - The Mesh
+Node: oblada
+Kembali ke Beranda
+```
+
+Pengujian menggunakan hostname `oblada.k28.com`, bukan menggunakan IP address.
+
+<img width="959" height="501" alt="Screenshot 2026-09-30 214607" src="https://github.com/user-attachments/assets/358ca289-4ce5-41bc-9414-bd9303bd10a1" />
+
+<img width="959" height="501" alt="Screenshot 2026-09-30 214635" src="https://github.com/user-attachments/assets/54519f82-92f3-4d4c-8122-2fdd5b94d25d" />
+
+## Kesimpulan
+
+Berdasarkan konfigurasi dan pengujian yang dilakukan, layanan web dinamis berhasil dijalankan pada node **Oblada** menggunakan **Nginx dan PHP-FPM**. Website memiliki halaman beranda dan halaman profil. Aturan rewrite berhasil membuat halaman profil dapat diakses menggunakan URL bersih `/profil` tanpa akhiran `.php`. Pengujian dilakukan menggunakan hostname `oblada.k28.com`.
+
+## Versi Otomatis (Script)
+
+### Node `oblada`
+
+Buat dan jalankan script:
+
+```sh
+cat > soal10_setup.sh <<'EOF'
+#!/bin/sh
+
+apk update
+apk add nginx php84 php84-fpm
+
+mkdir -p /var/www/core
+mkdir -p /etc/nginx/http.d
+
+cat > /var/www/core/index.php <<'PHP'
+<?php
+echo "<h1>Markas K28</h1>";
+echo "<p>Halo! Selamat datang di markas kecil The Mesh.</p>";
+echo "<p>Kalau error, tenang... kita juga kadang error.</p>";
+echo "<p>Jangan panik, deadline cuma angka.</p>";
+echo "<hr>";
+echo "<p><b>May & AL | Kelompok K28</b></p>";
+echo "<p>Dikelola oleh node: oblada</p>";
+echo "<p><a href='/profil'>Lihat Profil Kami</a></p>";
+?>
+PHP
+
+cat > /var/www/core/profil.php <<'PHP'
+<?php
+echo "<h1>Profil Kelompok</h1>";
+echo "<p><b>May & AL</b></p>";
+echo "<p>Kelompok K28 - The Mesh</p>";
+echo "<p>Node: oblada</p>";
+echo "<p><a href='/'>Kembali ke Beranda</a></p>";
+?>
+PHP
+
+cat > /etc/nginx/http.d/core.conf <<'NGINX'
+server {
+    listen 80;
+    server_name oblada.k28.com;
+
+    root /var/www/core;
+    index index.php;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location = /profil {
+        rewrite ^/profil$ /profil.php last;
+    }
+
+    location ~ \.php$ {
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_pass 127.0.0.1:9000;
+    }
+}
+NGINX
+
+php-fpm84
+
+nginx -t || exit 1
+
+nginx 2>/dev/null || nginx -s reload
+
+echo "=== SOAL 10 OBLADA SELESAI ==="
+EOF
+
+chmod +x soal10_setup.sh
+./soal10_setup.sh
+```
+
+---
+
+### Node `molly`
+
+Buat dan jalankan script:
+
+```sh
+cat > soal10_setup.sh <<'EOF'
+#!/bin/sh
+
+apk update
+apk add nginx php84 php84-fpm
+
+mkdir -p /var/www/core
+mkdir -p /etc/nginx/http.d
+
+cat > /var/www/core/index.php <<'PHP'
+<?php
+echo "<h1>Markas K28</h1>";
+echo "<p>Halo! Selamat datang di markas kecil The Mesh.</p>";
+echo "<p>Kalau error, tenang... kita juga kadang error.</p>";
+echo "<p>Jangan panik, deadline cuma angka.</p>";
+echo "<hr>";
+echo "<p><b>May & AL | Kelompok K28</b></p>";
+echo "<p>Dikelola oleh node: molly</p>";
+echo "<p><a href='/profil'>Lihat Profil Kami</a></p>";
+?>
+PHP
+
+cat > /var/www/core/profil.php <<'PHP'
+<?php
+echo "<h1>Profil Kelompok</h1>";
+echo "<p><b>May & AL</b></p>";
+echo "<p>Kelompok K28 - The Mesh</p>";
+echo "<p>Node: molly</p>";
+echo "<p><a href='/'>Kembali ke Beranda</a></p>";
+?>
+PHP
+
+cat > /etc/nginx/http.d/core.conf <<'NGINX'
+server {
+    listen 80;
+    server_name molly.k28.com;
+
+    root /var/www/core;
+    index index.php;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location = /profil {
+        rewrite ^/profil$ /profil.php last;
+    }
+
+    location ~ \.php$ {
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_pass 127.0.0.1:9000;
+    }
+}
+NGINX
+
+php-fpm84
+
+nginx -t || exit 1
+
+nginx 2>/dev/null || nginx -s reload
+
+echo "=== SOAL 10 MOLLY SELESAI ==="
+EOF
+
+chmod +x soal10_setup.sh
+./soal10_setup.sh
+```
+
+### Pengujian dari Node `delta`
+
+```sh
+curl http://oblada.k28.com/
+curl http://oblada.k28.com/profil
+
+curl http://molly.k28.com/
+curl http://molly.k28.com/profil
+```
+
+Pengujian menggunakan Lynx:
+
+```sh
+lynx -reload http://oblada.k28.com/
+lynx -reload http://oblada.k28.com/profil
+
+lynx -reload http://molly.k28.com/
+lynx -reload http://molly.k28.com/profil
+```
+---
+
 
