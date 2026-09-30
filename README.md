@@ -4268,4 +4268,157 @@ chmod +x /root/soal15_abbey.sh
 | Penny | `/eternal/` | `/var/www/eternal/` | PHP + PHP-FPM |
 | Abbey | `/orion/`   | `/var/www/orion/`   | Static        |
 
+# SOAL 16 — Stress Test ApacheBench
+
+## 1. Tujuan
+
+Melakukan stress test terhadap dua endpoint menggunakan **ApacheBench (AB)** dari client `Alpha` dengan ketentuan:
+
+* Total requests: **250**
+* Concurrency: **10**
+* Endpoint pertama: `http://www.k28.com/`
+* Endpoint kedua: `http://static.k28.com/`
+
+---
+
+# 2. Step Manual
+
+## 2.1 Menyiapkan ApacheBench pada Alpha
+
+Masuk ke console `Alpha` dan periksa apakah ApacheBench tersedia:
+
+```bash
+ab -V
+```
+
+Pada awalnya ApacheBench belum tersedia, sehingga dilakukan instalasi:
+
+```bash
+apk add apache2-utils
+```
+
+Setelah instalasi selesai, ApacheBench diperiksa kembali:
+
+```bash
+ab -V
+```
+
+Hasil:
+
+```text
+This is ApacheBench, Version 2.3
+```
+
+ApacheBench berhasil terpasang dan siap digunakan.
+
+---
+
+## 2.2 Benchmark `www.k28.com`
+
+Pengujian dilakukan dengan **250 requests** dan **concurrency 10**:
+
+```bash
+ab -n 250 -c 10 http://www.k28.com/
+```
+
+ApacheBench menyelesaikan seluruh 250 requests.
+
+Hasil utama:
+
+```text
+Concurrency Level:      10
+Time taken for tests:   4.972 seconds
+Complete requests:      250
+Failed requests:        0
+Non-2xx responses:      250
+Requests per second:    50.29 [#/sec] (mean)
+Time per request:       198.865 [ms] (mean)
+Transfer rate:          347.68 [Kbytes/sec] received
+```
+
+<img width="837" height="963" alt="Screenshot 2026-10-01 012809" src="https://github.com/user-attachments/assets/4e07b950-c95f-4e52-a052-7de5712ba56d" />
+
+---
+
+## 2.3 Benchmark `static.k28.com`
+
+Pengujian berikutnya dilakukan terhadap endpoint `static.k28.com` dengan parameter yang sama:
+
+```bash
+ab -n 250 -c 10 http://static.k28.com/
+```
+
+ApacheBench juga menyelesaikan seluruh 250 requests.
+
+Hasil utama:
+
+```text
+Concurrency Level:      10
+Time taken for tests:   4.812 seconds
+Complete requests:      250
+Failed requests:        0
+Non-2xx responses:      250
+Requests per second:    51.95 [#/sec] (mean)
+Time per request:       192.480 [ms] (mean)
+Transfer rate:          359.36 [Kbytes/sec] received
+```
+
+<img width="1324" height="1052" alt="image" src="https://github.com/user-attachments/assets/2cdd0ab6-cff9-4cef-b25a-fbf55b39cea5" />
+
+---
+
+# 3. Rangkuman Hasil
+
+| Parameter           | `www.k28.com` | `static.k28.com` |
+| ------------------- | ------------: | ---------------: |
+| Requests            |           250 |              250 |
+| Concurrency         |            10 |               10 |
+| Complete requests   |           250 |              250 |
+| Failed requests     |             0 |                0 |
+| Non-2xx responses   |           250 |              250 |
+| Time taken          |       4.972 s |          4.812 s |
+| Requests per second |   50.29 req/s |      51.95 req/s |
+| Time per request    |    198.865 ms |       192.480 ms |
+| Transfer rate       |   347.68 KB/s |      359.36 KB/s |
+| Longest request     |        361 ms |           201 ms |
+
+Pada kedua pengujian, ApacheBench menyelesaikan seluruh **250 requests** dengan tingkat konkurensi **10** dan mencatat **0 failed requests**.
+
+Nilai `Non-2xx responses: 250` menunjukkan bahwa response HTTP yang diterima bukan status 2xx. Hal ini sesuai dengan kondisi konfigurasi endpoint yang masih menghasilkan response redirect.
+
+---
+
+# 4. Script
+
+Script Soal 16 disimpan pada:
+
+```text
+/root/soal16.sh
+```
+
+Isi script:
+
+```bash
+#!/bin/sh
+
+echo "=== ApacheBench: www.k28.com ==="
+ab -n 250 -c 10 http://www.k28.com/
+
+echo ""
+echo "=== ApacheBench: static.k28.com ==="
+ab -n 250 -c 10 http://static.k28.com/
+
+echo ""
+echo "=== Soal 16 selesai ==="
+```
+
+Permission executable diberikan menggunakan:
+
+```bash
+chmod +x /root/soal16.sh
+```
+
+Script tersebut digunakan untuk menjalankan benchmark ApacheBench terhadap kedua endpoint dengan konfigurasi **250 requests** dan **concurrency 10**.
+
+
 
