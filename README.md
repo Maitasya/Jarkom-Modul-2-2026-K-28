@@ -4420,5 +4420,237 @@ chmod +x /root/soal16.sh
 
 Script tersebut digunakan untuk menjalankan benchmark ApacheBench terhadap kedua endpoint dengan konfigurasi **250 requests** dan **concurrency 10**.
 
+# Soal 17 — TXT Record DNS
+
+## 1. Tujuan
+
+Menambahkan **TXT record** pada DNS master `prab` untuk seluruh klien sayap kiri dan sayap kanan, yaitu:
+
+* `alpha.k28.com` → `"alpha"`
+* `beta.k28.com` → `"beta"`
+* `gamma.k28.com` → `"gamma"`
+* `delta.k28.com` → `"delta"`
+* `epsilon.k28.com` → `"epsilon"`
+
+DNS master yang digunakan adalah `prab` dengan alamat IP `192.225.5.2`.
+
+---
+
+## 2. Step Manual
+
+### 2.1 Mengecek konfigurasi DNS
+
+Pada server `prab`, konfigurasi zone `k28.com` terdapat pada:
+
+```text
+/etc/bind/named.conf
+```
+
+Zone menggunakan file:
+
+```text
+/var/bind/k28.com
+```
+
+Konfigurasi zone:
+
+```text
+zone "k28.com" IN {
+    type master;
+    file "/var/bind/k28.com";
+    notify yes;
+    also-notify { 192.225.5.3; };
+    allow-transfer { 192.225.5.3; };
+};
+```
+
+---
+
+### 2.2 Menambahkan TXT record
+
+File zone `/var/bind/k28.com` kemudian ditambahkan lima TXT record:
+
+```text
+alpha   IN  TXT "alpha"
+beta    IN  TXT "beta"
+gamma   IN  TXT "gamma"
+delta   IN  TXT "delta"
+epsilon IN  TXT "epsilon"
+```
+
+Serial SOA juga dinaikkan dari:
+
+```text
+1790762977
+```
+
+menjadi:
+
+```text
+1790762978
+```
+
+---
+
+### 2.3 Validasi zone
+
+Setelah perubahan, konfigurasi zone diperiksa menggunakan:
+
+```bash
+named-checkzone k28.com /var/bind/k28.com
+```
+
+Hasil validasi:
+
+```text
+zone k28.com/IN: loaded serial 1790762978
+OK
+```
+
+<img width="731" height="283" alt="image" src="https://github.com/user-attachments/assets/68592466-cd29-4ac1-a5c7-b7e26ab48fad" />
+
+
+---
+
+### 2.4 Menjalankan DNS Server
+
+Pada saat pengecekan, proses `named` tidak sedang berjalan sehingga DNS belum dapat menerima query.
+
+BIND kemudian dijalankan menggunakan:
+
+```bash
+named -c /etc/bind/named.conf
+```
+
+Proses diverifikasi menggunakan:
+
+```bash
+ps aux | grep '[n]amed'
+```
+
+Hasil menunjukkan proses BIND aktif:
+
+```text
+root  112  ... named -c /etc/bind/named.conf
+```
+
+---
+
+### 2.5 Pengujian TXT record
+
+Query TXT dilakukan terhadap DNS master `prab`:
+
+```bash
+dig @192.225.5.2 alpha.k28.com TXT +short
+```
+
+Hasil:
+
+```text
+"alpha"
+```
+
+
+<img width="479" height="170" alt="image" src="https://github.com/user-attachments/assets/1a8bc5a4-6e8b-49e9-b245-161e0a0b19af" />
+
+
+---
+
+### 2.6 Pengujian seluruh hostname
+
+Selanjutnya seluruh record TXT diuji sekaligus:
+
+```bash
+for h in beta gamma delta epsilon; do
+    echo "$h:"
+    dig @192.225.5.2 "$h.k28.com" TXT +short
+done
+```
+
+Hasil:
+
+```text
+beta:
+"beta"
+
+gamma:
+"gamma"
+
+delta:
+"delta"
+
+epsilon:
+"epsilon"
+```
+
+Dengan hasil tersebut, seluruh TXT record telah dapat di-query melalui DNS master `prab`.
+
+<img width="537" height="287" alt="image" src="https://github.com/user-attachments/assets/88495282-d362-4969-818d-d818ee50247f" />
+
+
+---
+
+## 3. Hasil
+
+| Hostname          | TXT Record  | Status   |
+| ----------------- | ----------- | -------- |
+| `alpha.k28.com`   | `"alpha"`   | Berhasil |
+| `beta.k28.com`    | `"beta"`    | Berhasil |
+| `gamma.k28.com`   | `"gamma"`   | Berhasil |
+| `delta.k28.com`   | `"delta"`   | Berhasil |
+| `epsilon.k28.com` | `"epsilon"` | Berhasil |
+
+Seluruh hostname klien sayap kiri dan sayap kanan telah memiliki TXT record yang mengembalikan nama hostname masing-masing ketika dilakukan query DNS.
+
+---
+
+## 4. Script
+
+Script konfigurasi dibuat pada:
+
+```text
+/root/soal17.sh
+```
+
+Isi script:
+
+```sh
+#!/bin/sh
+
+ZONE="/var/bind/k28.com"
+
+# Update serial SOA
+sed -i 's/1790762978/1790762979/' "$ZONE"
+
+# Tambahkan TXT record jika belum ada
+grep -q '^alpha[[:space:]].*TXT' "$ZONE" || cat >> "$ZONE" <<'EOF'
+
+alpha   IN  TXT "alpha"
+beta    IN  TXT "beta"
+gamma   IN  TXT "gamma"
+delta   IN  TXT "delta"
+epsilon IN  TXT "epsilon"
+EOF
+
+# Validasi zone
+named-checkzone k28.com "$ZONE"
+
+# Jalankan BIND jika belum aktif
+if ! pgrep -x named >/dev/null 2>&1; then
+    named -c /etc/bind/named.conf
+else
+    kill -HUP "$(pgrep -xo named)"
+fi
+
+echo "=== Soal 17 selesai ==="
+```
+
+Permission script:
+
+```bash
+chmod +x /root/soal17.sh
+```
+
+
 
 
