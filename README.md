@@ -1,4 +1,4 @@
-<img width="950" height="300" alt="Screenshot 2026-09-30 183747" src="https://github.com/user-attachments/assets/4204f81d-e0c9-420b-be8b-5a1d3c05730e" /># Jarkom-Modul-2-2026-K-28
+# Jarkom-Modul-2-2026-K-28
 
 ## Kelompok K-28
 
