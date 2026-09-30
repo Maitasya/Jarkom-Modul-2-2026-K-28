@@ -1599,3 +1599,114 @@ server.txt
 
 Konfigurasi web statis menggunakan Apache berhasil dilakukan. Fitur AutoIndex pada direktori `/arsip/` juga berhasil menampilkan daftar file dan folder. Pengujian menggunakan hostname `obladi.k28.com`, `desmond.k28.com`, dan `vault.k28.com` berhasil dilakukan tanpa menggunakan IP address secara langsung.
 
+## Versi Otomatis (Script)
+
+### Node `obladi`
+
+```bash
+cat > soal9_setup.sh <<'EOF'
+#!/bin/sh
+
+apk update
+apk add apache2 curl
+
+mkdir -p /arsip/laporan
+
+echo "dokumen 1" > /arsip/dokumen1.txt
+echo "dokumen 2" > /arsip/dokumen2.txt
+echo "laporan a" > /arsip/laporan/a.txt
+echo "dari obladi" > /arsip/server.txt
+
+chmod -R 755 /arsip
+
+cat > /etc/apache2/conf.d/arsip.conf <<'CONF'
+ServerName localhost
+
+Alias /arsip /arsip
+
+<Directory "/arsip">
+    Options +Indexes
+    IndexOptions FancyIndexing HTMLTable NameWidth=*
+    AllowOverride None
+    Require all granted
+</Directory>
+CONF
+
+httpd -t || exit 1
+
+ps | grep -q "[h]ttpd" && httpd -k restart || httpd
+
+sleep 1
+
+echo "=== TEST APACHE ==="
+curl -s http://localhost/arsip/ | grep -E "dokumen|laporan"
+
+echo "=== TEST SERVER ==="
+curl -s http://localhost/arsip/server.txt
+EOF
+```
+cara menjelankannya:
+```
+chmod +x soal9_setup.sh
+./soal9_setup.sh
+```
+
+### Node `desmond`
+
+```bash
+cat > soal9_setup.sh <<'EOF'
+#!/bin/sh
+
+apk update
+apk add apache2 curl
+
+mkdir -p /arsip/laporan
+
+echo "dokumen 1" > /arsip/dokumen1.txt
+echo "dokumen 2" > /arsip/dokumen2.txt
+echo "laporan a" > /arsip/laporan/a.txt
+echo "dari desmond" > /arsip/server.txt
+
+chmod -R 755 /arsip
+
+cat > /etc/apache2/conf.d/arsip.conf <<'CONF'
+ServerName localhost
+
+Alias /arsip /arsip
+
+<Directory "/arsip">
+    Options +Indexes
+    IndexOptions FancyIndexing HTMLTable NameWidth=*
+    AllowOverride None
+    Require all granted
+</Directory>
+CONF
+
+httpd -t || exit 1
+
+ps | grep -q "[h]ttpd" && httpd -k restart || httpd
+
+sleep 1
+
+echo "=== TEST APACHE ==="
+curl -s http://localhost/arsip/ | grep -E "dokumen|laporan"
+
+echo "=== TEST SERVER ==="
+curl -s http://localhost/arsip/server.txt
+EOF
+```
+cara menjelankannya:
+```
+chmod +x soal9_setup.sh
+./soal9_setup.sh
+```
+
+### Pengujian Hostname
+
+Dilakukan dari node yang digunakan untuk pengujian, misalnya `delta`:
+
+```bash
+curl http://vault.k28.com/arsip/
+```
+
+
