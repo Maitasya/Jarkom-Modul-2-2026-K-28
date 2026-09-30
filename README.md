@@ -3768,7 +3768,7 @@ EOF
 Kemudian beri izin:
 
 ```bash
-chmod +x /root/soal14.sh
+chmod +x /root/soal14.sh 
 ```
 
 Jalankan:
@@ -3817,3 +3817,379 @@ Pada **Molly**:
 ```bash
 /root/soal14.sh
 ```
+
+# Soal 15 — Reverse Proxy Path Khusus
+
+## Tujuan
+
+Membuat dua jalur proxy khusus:
+
+* **Penny:** `/eternal` → `/var/www/eternal` dengan PHP rendering.
+* **Abbey:** `/orion` → `/var/www/orion` secara static tanpa PHP rendering.
+
+---
+
+# A. Penny — `/eternal`
+
+## Step Manual
+
+### 1. Install PHP 8.4 dan PHP-FPM
+
+Pada `penny`:
+
+```bash
+apk add php84 php84-fpm
+```
+
+Cek versi PHP:
+
+```bash
+php84 -v
+```
+
+### 2. Jalankan PHP-FPM
+
+```bash
+php-fpm84 -D
+```
+
+Cek PHP-FPM:
+
+```bash
+ss -ltnp | grep 9000
+```
+
+PHP-FPM harus terlihat berjalan pada `127.0.0.1:9000`.
+<img width="775" height="192" alt="Screenshot 2026-10-01 010939" src="https://github.com/user-attachments/assets/1031f3cb-1d53-4c2b-8a4f-aff2c50a7ffa" />
+
+> Ambil screenshot saat hasil `ss -ltnp | grep 9000` terlihat.
+
+---
+
+### 3. Buat directory `/var/www/eternal`
+
+```bash
+mkdir -p /var/www/eternal
+```
+
+Buat file PHP:
+
+```bash
+cat > /var/www/eternal/index.php <<'EOF'
+<?php echo "Eternal PHP OK"; ?>
+EOF
+```
+
+---
+
+### 4. Konfigurasi Apache
+
+Buat:
+
+```text
+/etc/apache2/conf.d/eternal.conf
+```
+
+Isi:
+
+```apache
+ProxyPass "/eternal" "!"
+
+Alias /eternal/ /var/www/eternal/
+
+<Directory "/var/www/eternal">
+    Options Indexes
+    AllowOverride None
+    Require all granted
+    DirectoryIndex index.php
+</Directory>
+
+<FilesMatch "\.php$">
+    SetHandler "proxy:fcgi://127.0.0.1:9000"
+</FilesMatch>
+```
+
+Cek konfigurasi:
+
+```bash
+httpd -t
+```
+
+Jika hasilnya:
+
+```text
+Syntax OK
+```
+
+restart Apache:
+
+```bash
+httpd -k restart
+```
+
+---
+
+### 5. Test `/eternal`
+
+```bash
+curl -i http://127.0.0.1/eternal/
+```
+
+Hasil yang diharapkan:
+
+```text
+HTTP/1.1 200 OK
+X-Powered-By: PHP/8.4.21
+
+Eternal PHP OK
+```
+
+<img width="570" height="247" alt="Screenshot 2026-10-01 010921" src="https://github.com/user-attachments/assets/14d6da72-71bf-4273-bb3d-31d5c7c2a7c8" />
+
+
+> Ambil screenshot hasil `curl` yang memperlihatkan `200 OK`, `X-Powered-By: PHP/8.4.21`, dan `Eternal PHP OK`.
+
+---
+
+## Script Penny
+
+Script disimpan di:
+
+```text
+/root/soal15_penny.sh
+```
+
+```bash
+#!/bin/sh
+
+apk add php84 php84-fpm
+
+php-fpm84 -D
+
+mkdir -p /var/www/eternal
+
+cat > /var/www/eternal/index.php <<'PHP'
+<?php
+echo "Eternal PHP OK";
+?>
+PHP
+
+cat > /etc/apache2/conf.d/eternal.conf <<'APACHE'
+ProxyPass "/eternal" "!"
+
+Alias /eternal/ /var/www/eternal/
+
+<Directory "/var/www/eternal">
+    Options Indexes
+    AllowOverride None
+    Require all granted
+    DirectoryIndex index.php
+</Directory>
+
+<FilesMatch "\.php$">
+    SetHandler "proxy:fcgi://127.0.0.1:9000"
+</FilesMatch>
+APACHE
+
+httpd -t && httpd -k restart
+
+echo "=== Soal 15 Penny selesai ==="
+```
+
+---
+
+# B. Abbey — `/orion`
+
+## Step Manual
+
+### 1. Buat directory `/var/www/orion`
+
+Pada `abbey`:
+
+```bash
+mkdir -p /var/www/orion
+```
+
+Buat halaman static:
+
+```bash
+cat > /var/www/orion/index.html <<'EOF'
+<!DOCTYPE html>
+<html>
+<head><title>Orion</title></head>
+<body>
+<h1>Orion Static OK</h1>
+<p>This is a static page.</p>
+</body>
+</html>
+EOF
+```
+
+---
+
+### 2. Konfigurasi Nginx
+
+Edit:
+
+```text
+/etc/nginx/http.d/default.conf
+```
+
+Pada `server` `abbey.k28.com`, gunakan:
+
+```nginx
+server {
+    listen 80 default_server;
+    server_name abbey.k28.com;
+
+    location = /orion {
+        return 301 /orion/;
+    }
+
+    location ~ ^/orion/.*\.php$ {
+        return 404;
+    }
+
+    location /orion/ {
+        alias /var/www/orion/;
+        index index.html;
+    }
+
+    location / {
+        return 302 http://static.k28.com/;
+    }
+}
+```
+
+Cek konfigurasi:
+
+```bash
+nginx -t
+```
+
+Hasil harus:
+
+```text
+syntax is ok
+test is successful
+```
+
+<img width="742" height="248" alt="Screenshot 2026-10-01 011002" src="https://github.com/user-attachments/assets/64e77846-0b70-4797-8d9f-76775dc70159" />
+
+
+> Ambil screenshot tepat setelah `nginx -t` berhasil.
+
+Kemudian reload:
+
+```bash
+nginx -s reload
+```
+
+---
+
+### 3. Test `/orion`
+
+```bash
+curl -i -H 'Host: abbey.k28.com' http://127.0.0.1/orion/
+```
+
+Hasil yang diharapkan:
+
+```text
+HTTP/1.1 200 OK
+
+Orion Static OK
+```
+
+<img width="739" height="518" alt="Screenshot 2026-10-01 011014" src="https://github.com/user-attachments/assets/d6e2be0f-40eb-4091-90f3-d069f9091ba2" />
+
+
+> Ambil screenshot hasil `curl` yang memperlihatkan `200 OK` dan `Orion Static OK`.
+
+---
+
+## Script Abbey
+
+Script disimpan di:
+
+```text
+/root/soal15_abbey.sh
+```
+
+```bash
+#!/bin/sh
+
+mkdir -p /var/www/orion
+
+cat > /var/www/orion/index.html <<'HTML'
+<!DOCTYPE html>
+<html>
+<head><title>Orion</title></head>
+<body>
+<h1>Orion Static OK</h1>
+<p>This is a static page.</p>
+</body>
+</html>
+HTML
+
+cat > /etc/nginx/http.d/default.conf <<'NGINX'
+upstream core_backend {
+    server 192.225.5.6;
+    server 192.225.5.7;
+}
+
+server {
+    listen 80;
+    server_name core.k28.com;
+
+    location / {
+        proxy_pass http://core_backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+
+server {
+    listen 80 default_server;
+    server_name abbey.k28.com;
+
+    location = /orion {
+        return 301 /orion/;
+    }
+
+    location ~ ^/orion/.*\.php$ {
+        return 404;
+    }
+
+    location /orion/ {
+        alias /var/www/orion/;
+        index index.html;
+    }
+
+    location / {
+        return 302 http://static.k28.com/;
+    }
+}
+NGINX
+
+nginx -t && nginx -s reload
+
+echo "=== Soal 15 Abbey selesai ==="
+```
+
+Permission:
+
+```bash
+chmod +x /root/soal15_abbey.sh
+```
+
+---
+
+# C. Hasil Akhir
+
+| Node  | Path        | Directory           | Mode          |
+| ----- | ----------- | ------------------- | ------------- |
+| Penny | `/eternal/` | `/var/www/eternal/` | PHP + PHP-FPM |
+| Abbey | `/orion/`   | `/var/www/orion/`   | Static        |
+
+
