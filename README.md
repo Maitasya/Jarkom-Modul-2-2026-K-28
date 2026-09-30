@@ -4650,6 +4650,249 @@ Permission script:
 ```bash
 chmod +x /root/soal17.sh
 ```
+## Soal 18 — Perubahan A Record, TTL, dan Sinkronisasi DNS
+
+### Step Manual
+
+#### 1. Cek kondisi awal A record Abbey
+
+Pada node **prab**, dilakukan pengecekan A record `abbey.k28.com` sebelum perubahan.
+
+```bash
+dig @192.225.5.2 abbey.k28.com A +noall +answer
+```
+
+Hasil awal menunjukkan IP Abbey:
+
+```text
+abbey.k28.com.    604800    IN    A    192.225.4.2
+```
+
+<img width="588" height="122" alt="Screenshot 2026-10-01 015826" src="https://github.com/user-attachments/assets/0be1e295-8663-4d5b-8104-411d0107ecc2" />
+
+> Tampilkan hasil `dig` yang menunjukkan A record lama `192.225.4.2`.
+
+---
+
+#### 2. Periksa serial SOA sebelum perubahan
+
+Pada **prab**, nilai serial SOA sebelum perubahan adalah:
+
+```bash
+dig @192.225.5.2 k28.com SOA +short
+```
+
+Serial awal:
+
+```text
+1790762978
+```
+
+Nilai ini digunakan sebagai dasar sebelum melakukan perubahan record.
+
+---
+
+#### 3. Ubah A record Abbey dan TTL
+
+File zone pada **prab**:
+
+```bash
+vi /var/bind/k28.com
+```
+
+Record Abbey diubah dari:
+
+```text
+abbey   IN  A   192.225.4.2
+```
+
+menjadi:
+
+```text
+abbey   15  IN  A   10.99.99.99
+```
+
+IP `10.99.99.99` digunakan sebagai IP fiktif yang tetap memiliki format IPv4 valid.
+
+Serial SOA dinaikkan dari:
+
+```text
+1790762978
+```
+
+menjadi:
+
+```text
+1790762979
+```
+
+---
+
+#### 4. Validasi zone
+
+Setelah perubahan dilakukan, zone diperiksa menggunakan:
+
+```bash
+named-checkzone k28.com /var/bind/k28.com
+```
+
+Hasil:
+
+```text
+zone k28.com/IN: loaded serial 1790762979
+OK
+```
+
+<img width="731" height="283" alt="Screenshot 2026-10-01 014631" src="https://github.com/user-attachments/assets/6f3eb51c-05f4-4166-bfdd-ec0153d1d310" />
+
+> Tampilkan hasil `named-checkzone` dengan status `OK` dan serial `1790762979`.
+
+---
+
+#### 5. Reload DNS Master
+
+Agar perubahan zone dimuat oleh BIND, dilakukan reload terhadap proses `named`:
+
+```bash
+kill -HUP "$(pgrep -xo named)"
+```
+
+Kemudian record diperiksa kembali:
+
+```bash
+dig @192.225.5.2 abbey.k28.com A +noall +answer
+```
+
+Hasil:
+
+```text
+abbey.k28.com.    15    IN    A    10.99.99.99
+```
+
+Hasil tersebut menunjukkan bahwa A record baru telah aktif dan TTL record Abbey telah ditetapkan menjadi **15 detik**.
+
+<img width="556" height="93" alt="image" src="https://github.com/user-attachments/assets/0f64f1ae-19dc-4942-a4ad-8d86747d377b" />
+
+> Tampilkan hasil `dig` yang menunjukkan `10.99.99.99` dengan TTL `15`.
+
+---
+
+#### 6. Verifikasi sinkronisasi ke tedd
+
+Slave DNS pada **tedd** diperiksa menggunakan:
+
+```bash
+dig @192.225.5.3 k28.com SOA +short
+```
+
+Serial yang diperoleh:
+
+```text
+1790762979
+```
+
+Kemudian A record Abbey diperiksa:
+
+```bash
+dig @192.225.5.3 abbey.k28.com A +noall +answer
+```
+
+Hasil:
+
+```text
+abbey.k28.com.    15    IN    A    10.99.99.99
+```
+
+Serial pada `prab` dan `tedd` telah sama sehingga zone berhasil tersinkronisasi.
+
+<img width="544" height="82" alt="image" src="https://github.com/user-attachments/assets/ea080b38-85d1-439d-a0ce-e46dc0471fcc" />
+
+> Tampilkan serial `1790762979` pada tedd dan A record Abbey `10.99.99.99` dengan TTL `15`.
+
+---
+
+### Verifikasi Tiga Fase TTL
+
+Sesuai instruksi soal, perubahan DNS seharusnya diamati melalui tiga fase:
+
+1. **Sebelum perubahan**
+   Query mengembalikan IP lama:
+
+   ```text
+   192.225.4.2
+   ```
+
+2. **Sesaat setelah perubahan, sebelum TTL 15 detik habis**
+   Resolver caching seharusnya masih mengembalikan IP lama karena jawaban sebelumnya masih berada di cache.
+
+3. **Setelah TTL 15 detik habis**
+   Resolver melakukan query ulang dan mendapatkan IP baru:
+
+   ```text
+   10.99.99.99
+   ```
+
+Pada environment praktikum yang digunakan, node yang tersedia tidak menjalankan caching DNS resolver (`named`, `dnsmasq`, `unbound`, `nscd`, atau `systemd-resolved`). Query langsung ke `prab` dan `tedd` merupakan query ke authoritative DNS sehingga tidak dapat digunakan untuk membuktikan fase kedua berupa cache yang masih menyimpan IP lama.
+
+Oleh karena itu, fase cache tidak dibuat-buat dalam laporan. Bukti yang berhasil diverifikasi secara langsung adalah kondisi sebelum perubahan, perubahan record dengan TTL 15 detik, validasi zone, serta sinkronisasi master-slave.
+
+---
+
+## Script
+
+Script verifikasi disimpan pada:
+
+```text
+/root/soal18.sh
+```
+
+Isi script:
+
+```sh
+#!/bin/sh
+
+DOMAIN="abbey.k28.com"
+
+echo "=== SOAL 18: DNS TTL & Sinkronisasi ==="
+
+echo ""
+echo "=== 1. Cek SOA PRAB ==="
+dig @192.225.5.2 k28.com SOA +short
+
+echo ""
+echo "=== 2. Cek A RECORD ABBEY di PRAB ==="
+dig @192.225.5.2 "$DOMAIN" A +noall +answer
+
+echo ""
+echo "=== 3. Cek SOA TEDD ==="
+dig @192.225.5.3 k28.com SOA +short
+
+echo ""
+echo "=== 4. Cek A RECORD ABBEY di TEDD ==="
+dig @192.225.5.3 "$DOMAIN" A +noall +answer
+
+echo ""
+echo "=== 5. Validasi ZONE ==="
+named-checkzone k28.com /var/bind/k28.com
+
+echo ""
+echo "=== SOAL 18 SELESAI ==="
+```
+
+Script diberikan permission executable:
+
+```bash
+chmod +x /root/soal18.sh
+```
+
+Script dijalankan pada node **prab**:
+
+```bash
+/root/soal18.sh
+```
+
+Script digunakan untuk memverifikasi serial SOA pada master dan slave, A record Abbey, TTL record, serta validitas zone.
+
 
 
 
