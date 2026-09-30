@@ -4893,6 +4893,206 @@ Script dijalankan pada node **prab**:
 
 Script digunakan untuk memverifikasi serial SOA pada master dan slave, A record Abbey, TTL record, serta validitas zone.
 
+# Soal 19 — CNAME `outbound.k28.com` ke `http.badssl.com`
+
+## Tujuan
+
+Membuat CNAME record yang mengarahkan domain internal `outbound.k28.com` menuju domain eksternal `http.badssl.com`, kemudian melakukan pengujian menggunakan `curl`.
+
+---
+
+## Step Manual
+
+### 1. Menambahkan CNAME Record
+
+Pada server **prab**, edit zone file:
+
+```sh
+vi /var/bind/k28.com
+```
+
+Tambahkan record:
+
+```text
+outbound    IN    CNAME    http.badssl.com.
+```
+
+Serial SOA dinaikkan menjadi:
+
+```text
+1790762980
+```
+
+---
+
+### 2. Validasi Zone
+
+Jalankan:
+
+```sh
+named-checkzone k28.com /var/bind/k28.com
+```
+
+Hasil:
+
+```text
+zone k28.com/IN: loaded serial 1790762980
+OK
+```
+
+<img width="600" height="317" alt="Screenshot 2026-10-01 022037" src="https://github.com/user-attachments/assets/28428e8b-2006-4c0a-80ed-df72f4a56c45" />
+
+
+---
+
+### 3. Reload BIND
+
+Setelah zone valid, reload service BIND pada `prab`:
+
+```sh
+kill -HUP "$(pgrep -xo named)"
+```
+
+---
+
+### 4. Verifikasi CNAME
+
+Periksa record CNAME melalui DNS server `prab`:
+
+```sh
+dig @192.225.5.2 outbound.k28.com CNAME +noall +answer
+```
+
+Hasil:
+
+```text
+outbound.k28.com.       604800  IN  CNAME  http.badssl.com.
+```
+
+Hal ini menunjukkan bahwa `outbound.k28.com` telah memiliki CNAME menuju `http.badssl.com`.
+
+<img width="660" height="245" alt="Screenshot 2026-10-01 022047" src="https://github.com/user-attachments/assets/fc2de331-59cc-45e2-b14e-6b0cc74f71c9" />
+
+
+---
+
+### 5. Pengujian Domain Tujuan
+
+Untuk memastikan domain tujuan dapat diakses:
+
+```sh
+curl -I http://http.badssl.com
+```
+
+Hasil:
+
+```text
+HTTP/1.1 200 OK
+Server: nginx/1.10.3 (Ubuntu)
+Content-Type: text/html
+```
+
+<img width="480" height="314" alt="Screenshot 2026-10-01 022058" src="https://github.com/user-attachments/assets/dedd768f-9cf9-4504-a29f-30af04483d4d" />
+
+
+---
+
+### 6. Pengujian Melalui CNAME
+
+Lakukan request melalui domain internal dengan Host header tujuan:
+
+```sh
+curl -H "Host: http.badssl.com" http://outbound.k28.com
+```
+
+Hasil konten kemudian dibandingkan dengan konten dari domain asli.
+
+---
+
+### 7. Membandingkan Konten
+
+Simpan konten dari domain asli:
+
+```sh
+curl -s http://http.badssl.com > /tmp/asli
+```
+
+Simpan konten dari domain CNAME:
+
+```sh
+curl -s -H "Host: http.badssl.com" http://outbound.k28.com > /tmp/cname
+```
+
+Kemudian bandingkan:
+
+```sh
+diff -u /tmp/asli /tmp/cname
+```
+
+Tidak terdapat output dari perintah `diff`, sehingga tidak ditemukan perbedaan antara kedua konten.
+
+**Screenshot 4 — Perbandingan konten**
+
+<img width="675" height="101" alt="Screenshot 2026-10-01 022253" src="https://github.com/user-attachments/assets/af8c218d-ad13-40f5-b18d-00699877b634" />
+
+
+---
+
+## Script
+
+Script konfigurasi dan verifikasi disimpan pada:
+
+```text
+/root/soal19.sh
+```
+
+Isi script:
+
+```sh
+#!/bin/sh
+
+ZONE="/var/bind/k28.com"
+DOMAIN="outbound.k28.com"
+
+echo "=== SOAL 19: CNAME outbound -> http.badssl.com ==="
+
+echo ""
+echo "=== 1. Validasi Zone ==="
+named-checkzone k28.com "$ZONE"
+
+echo ""
+echo "=== 2. Cek CNAME ==="
+dig @192.225.5.2 "$DOMAIN" CNAME +noall +answer
+
+echo ""
+echo "=== 3. Cek HTTP Domain Asli ==="
+curl -I http://http.badssl.com
+
+echo ""
+echo "=== 4. Ambil Konten Domain Asli ==="
+curl -s http://http.badssl.com > /tmp/badssl-asli
+
+echo ""
+echo "=== 5. Ambil Konten melalui CNAME ==="
+curl -s -H "Host: http.badssl.com" http://"$DOMAIN" > /tmp/badssl-cname
+
+echo ""
+echo "=== 6. Bandingkan Konten ==="
+if diff -q /tmp/badssl-asli /tmp/badssl-cname >/dev/null 2>&1; then
+    echo "Konten IDENTIK"
+else
+    echo "Konten BERBEDA"
+fi
+
+echo ""
+echo "=== SOAL 19 SELESAI ==="
+```
+
+### Kesimpulan
+
+CNAME `outbound.k28.com` berhasil dibuat dan ter-resolve menuju `http.badssl.com`. Pengujian menggunakan `curl` dengan Host tujuan menunjukkan konten yang identik dengan `http.badssl.com`, dibuktikan dengan perintah `diff` yang tidak menghasilkan perbedaan.
+
+
 
 
 
