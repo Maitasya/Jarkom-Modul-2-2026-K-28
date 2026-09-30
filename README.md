@@ -1,4 +1,4 @@
-# Jarkom-Modul-2-2026-K-28
+<img width="950" height="300" alt="Screenshot 2026-09-30 183747" src="https://github.com/user-attachments/assets/4204f81d-e0c9-420b-be8b-5a1d3c05730e" /># Jarkom-Modul-2-2026-K-28
 
 ## Kelompok K-28
 
@@ -1376,3 +1376,226 @@ Setelah node direstart (named tidak menyala otomatis dan `soal4_*` menimpa `name
 # semua node non-router
 /root/resolver_soal4.sh
 ```ne hilang. Kalau terlanjur, jalankan `soal8_prab.sh` lalu `soal8_tedd.sh` untuk memasang kembali.
+
+---
+#SOAL 9 — WEB STATIS APACHE DAN AUTOINDEX
+
+## Tujuan
+
+Pada soal ini dilakukan konfigurasi web statis menggunakan Apache pada node area vault. Direktori `/arsip/` dibuat dan fitur **AutoIndex (Directory Listing)** diaktifkan agar file dan folder di dalamnya dapat ditampilkan melalui web. Pengujian dilakukan menggunakan hostname, yaitu `obladi.k28.com`, `desmond.k28.com`, dan `vault.k28.com`, bukan menggunakan IP address secara langsung.
+
+## Langkah-Langkah
+
+### 1. Konfigurasi Apache pada `obladi`
+
+Masuk ke console `obladi`, kemudian install Apache dan curl.
+
+```bash
+apk update
+apk add apache2 curl
+```
+
+Membuat direktori dan file untuk pengujian:
+
+```bash
+mkdir -p /arsip/laporan
+
+echo "dokumen 1" > /arsip/dokumen1.txt
+echo "dokumen 2" > /arsip/dokumen2.txt
+echo "laporan a" > /arsip/laporan/a.txt
+echo "dari obladi" > /arsip/server.txt
+
+chmod -R 755 /arsip
+```
+
+### 2. Mengaktifkan AutoIndex
+
+Membuat konfigurasi Apache:
+
+```bash
+cat > /etc/apache2/conf.d/arsip.conf <<'CONF'
+ServerName localhost
+
+Alias /arsip /arsip
+
+<Directory "/arsip">
+    Options +Indexes
+    IndexOptions FancyIndexing HTMLTable NameWidth=*
+    AllowOverride None
+    Require all granted
+</Directory>
+CONF
+```
+
+Cek konfigurasi:
+
+```bash
+httpd -t
+```
+
+Hasil:
+
+```text
+Syntax OK
+```
+
+Kemudian menjalankan Apache:
+
+```bash
+ps | grep -q "[h]ttpd" && httpd -k restart || httpd
+```
+
+Pengujian:
+
+```bash
+curl -s http://localhost/arsip/ | grep -E "dokumen|laporan"
+```
+
+Hasil:
+
+```text
+dokumen1.txt
+dokumen2.txt
+laporan/
+```
+
+**Konfigurasi dan hasil pengujian Apache pada `obladi`.**
+<img width="959" height="209" alt="Screenshot 2026-09-30 183515" src="https://github.com/user-attachments/assets/059f4940-4dfc-4bc8-b378-138d1af5f7b8" />
+
+### 3. Konfigurasi Apache pada `desmond`
+
+Masuk ke console `desmond`.
+
+```bash
+apk update
+apk add apache2 curl
+
+mkdir -p /arsip/laporan
+
+echo "dokumen 1" > /arsip/dokumen1.txt
+echo "dokumen 2" > /arsip/dokumen2.txt
+echo "laporan a" > /arsip/laporan/a.txt
+echo "dari desmond" > /arsip/server.txt
+
+chmod -R 755 /arsip
+```
+
+Membuat konfigurasi AutoIndex:
+
+```bash
+cat > /etc/apache2/conf.d/arsip.conf <<'CONF'
+ServerName localhost
+
+Alias /arsip /arsip
+
+<Directory "/arsip">
+    Options +Indexes
+    IndexOptions FancyIndexing HTMLTable NameWidth=*
+    AllowOverride None
+    Require all granted
+</Directory>
+CONF
+```
+
+Cek konfigurasi dan jalankan Apache:
+
+```bash
+httpd -t
+ps | grep -q "[h]ttpd" && httpd -k restart || httpd
+```
+
+Kemudian cek isi `/arsip/`:
+
+```bash
+curl -s http://localhost/arsip/ | grep -E "dokumen|laporan"
+```
+
+Hasil:
+
+```text
+dokumen1.txt
+dokumen2.txt
+laporan/
+```
+
+**Konfigurasi dan hasil pengujian Apache pada `desmond`.**
+<img width="933" height="140" alt="Screenshot 2026-09-30 183604" src="https://github.com/user-attachments/assets/a2d058cf-7769-413c-9710-eab8c22041a6" />
+
+### 4. Pengujian Hostname dari `delta`
+
+Pengujian dilakukan dari `delta` untuk memastikan hostname dapat digunakan.
+
+```bash
+dig obladi.k28.com +short
+dig desmond.k28.com +short
+dig vault.k28.com +short
+```
+
+Hasil:
+
+```text
+192.225.5.4
+192.225.5.5
+192.225.5.4
+192.225.5.5
+```
+
+Selanjutnya dilakukan pengujian web menggunakan hostname:
+
+```bash
+curl -s http://obladi.k28.com/arsip/ | grep -E "dokumen|laporan"
+
+curl -s http://desmond.k28.com/arsip/ | grep -E "dokumen|laporan"
+
+curl -s http://vault.k28.com/arsip/ | grep -E "dokumen|laporan"
+```
+
+Hasil menampilkan:
+
+```text
+dokumen1.txt
+dokumen2.txt
+laporan/
+```
+
+**Pengujian hostname dan directory listing dari `delta`.**
+<img width="950" height="300" alt="Screenshot 2026-09-30 183747" src="https://github.com/user-attachments/assets/2cfcd8e5-cb07-4a2c-b867-b0f11bf9734c" />
+
+### 5. Pengujian Folder `laporan`
+
+Untuk memastikan subfolder juga dapat ditelusuri:
+
+```bash
+curl -s http://vault.k28.com/arsip/laporan/ | grep "a.txt"
+```
+
+Hasil:
+
+```text
+a.txt
+```
+
+Kemudian dilakukan pengujian langsung:
+
+```bash
+curl http://vault.k28.com/arsip/
+```
+
+Hasil menampilkan:
+
+```text
+Index of /arsip
+
+dokumen1.txt
+dokumen2.txt
+laporan/
+server.txt
+```
+
+**Hasil directory listing `vault.k28.com/arsip/`.**
+<img width="959" height="232" alt="Screenshot 2026-09-30 184638" src="https://github.com/user-attachments/assets/0833e1a7-fa31-442d-a7b2-d29fb8cc4553" />
+
+## Kesimpulan
+
+Konfigurasi web statis menggunakan Apache berhasil dilakukan. Fitur AutoIndex pada direktori `/arsip/` juga berhasil menampilkan daftar file dan folder. Pengujian menggunakan hostname `obladi.k28.com`, `desmond.k28.com`, dan `vault.k28.com` berhasil dilakukan tanpa menggunakan IP address secara langsung.
+
