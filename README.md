@@ -24,8 +24,9 @@ Sesuai gambar topologi soal, rootkit tersambung ke lima switch:
 | eth2 | Switch4 | abbey | 192.225.4.0/24 |
 | eth1 | Switch1 (Switch2 dan Switch3) | prab, tedd, obladi, desmond, oblada, molly | 192.225.5.0/24 |
 
-<!-- SS: screenshot topologi GNS3 -->
-![Topologi](img/soal1-topologi.png)
+<! topologi GNS3 >
+<img width="959" height="415" alt="Screenshot 2026-09-28 204904" src="https://github.com/user-attachments/assets/737fa1bd-ff35-4f0c-adb9-66d82673ad52" />
+
 
 ### Tabel Konfigurasi IP
 
@@ -86,8 +87,8 @@ ping -c 3 192.225.5.1
 ping -c 3 8.8.8.8
 ```
 
-<!-- SS: ip -br addr, ip route, dan ping berhasil (satu SS untuk satu node, mis. obladi) -->
-![Verifikasi obladi](img/soal1-obladi.png)
+<!ip -br addr, ip route, dan ping berhasil (mis. obladi) -->
+<img width="959" height="426" alt="image" src="https://github.com/user-attachments/assets/a788c4d4-31b2-4478-bdaa-9139378ad60b" />
 
 Ulangi untuk node lain dengan IP dan gateway sesuai tabel.
 
@@ -104,7 +105,6 @@ Sambil ping ke gateway dari node, pastikan paket masuk lewat interface rootkit y
 Script `soal1.sh` dibuat di tiap node. Ubah dua baris `IP` dan `GW` sesuai tabel. Contoh di bawah untuk **obladi**:
 
 ```sh
-cat > /root/soal1.sh <<'EOT'
 #!/bin/bash
 IP="192.225.5.4"
 GW="192.225.5.1"
@@ -113,7 +113,7 @@ ip addr flush dev eth0
 ip addr add $IP/24 dev eth0
 ip route replace default via $GW
 
-cat > /etc/network/interfaces <<EOF
+cat > /etc/network/interfaces <<EOF2
 auto lo
 iface lo inet loopback
 
@@ -122,13 +122,11 @@ iface eth0 inet static
 address $IP
 netmask 255.255.255.0
 gateway $GW
-EOF
+EOF2
 
-echo "=== IP ADDRESS ==="
 ip -br addr
-echo "=== ROUTING ==="
 ip route
-EOT
+ 
 chmod +x /root/soal1.sh
 /root/soal1.sh
 ```
@@ -217,6 +215,43 @@ ping -c 3 google.com
 
 Hasil pengujian digunakan untuk memastikan node dapat melakukan resolusi nama domain dan terhubung ke internet.
 
+### Versi Otomatis (Script)
+
+Script `soal2.sh` dibuat di tiap node. Contoh di bawah untuk **obladi**:
+
+```sh
+#!/bin/sh
+
+echo "=== SOAL 2 CEK $(hostname) ==="
+
+echo "[1] RESOLVER"
+cat /etc/resolv.conf
+
+echo
+echo "[2] DEFAULT GATEWAY"
+ip route | grep default
+
+echo
+echo "[3] PING GATEWAY"
+GW=$(ip route | awk '/default/ {print $3; exit}')
+ping -c 3 "$GW"
+
+echo
+echo "[4] PING INTERNET"
+ping -c 3 8.8.8.8
+
+echo
+echo "[5] PING GOOGLE"
+ping -c 3 google.com
+
+echo "=== SELESAI ==="
+```
+jalankan perintah beriku:
+```
+chmod +x /root/soal2_cek.sh
+/root/soal2_cek.sh
+```
+
 ---
 # Soal 3 — Routing Internal dan Resolver
 
@@ -294,25 +329,63 @@ ping -c 3 google.com
 
 Pengujian ini memastikan resolver dapat menerjemahkan nama domain menjadi alamat IP.
 
+### Versi Otomatis (Script)
+
+Script `soal2.sh` dibuat di tiap node. Contoh di bawah untuk **obladi**:
+
+```
+#!/bin/sh
+
+echo "=== SOAL 3 $(hostname) ==="
+
+echo "[1] RESOLVER"
+cat /etc/resolv.conf
+
+echo
+echo "[2] DEFAULT GATEWAY"
+ip route | grep default
+
+echo
+echo "[3] CEK GATEWAY"
+GW=$(ip route | awk '/default/ {print $3; exit}')
+ping -c 3 "$GW"
+
+echo
+echo "[4] CEK LINTAS JARINGAN"
+ping -c 3 192.225.5.2
+
+echo
+echo "[5] CEK DNS"
+ping -c 3 google.com
+
+echo "=== SELESAI ==="
+```
+jalankan dengan perintah :
+
+```
+chmod +x /root/soal1.sh
+/root/soal1.sh
+```
+hasil:
+<img width="959" height="481" alt="image" src="https://github.com/user-attachments/assets/f5f3c478-fe55-4401-8068-b8831ce6df52" />
+
 ---
 ## Soal 4: DNS Master-Slave dan Resolver (K28)
 
-### Ringkasan
-
+## Tujuan:
 | Node | Peran | IP |
 |------|-------|----|
 | prab | DNS master (ns1) | 192.225.5.2 |
 | tedd | DNS slave (ns2) | 192.225.5.3 |
 | penny | Gerbang aplikasi dinamis (A record apex) | 192.225.3.3 |
 
-Tujuan:
 - prab menjadi master authoritative untuk zona `k28.com` (SOA, NS, A record, notify, allow-transfer, forwarders `192.168.122.1`).
 - tedd menarik zona dari prab dan menjawab secara authoritative.
 - Semua node non-router memakai urutan resolver: prab, tedd, `192.168.122.1`.
 
 ### Langkah Pengerjaan
 
-**1. Persiapan (prab dan tedd)**
+**1. Persiapan (console prab dan tedd)**
 
 ```sh
 cat /etc/resolv.conf
@@ -323,7 +396,7 @@ apk update
 apk add bind bind-tools
 ```
 
-**2. Konfigurasi prab (master)**
+**2. Konfigurasi di console prab (master)**
 
 ```sh
 cat > /etc/bind/named.conf <<'EOF'
@@ -565,6 +638,12 @@ echo "=== Selesai ==="
 EOT
 chmod +x /root/soal4_prab.sh
 ```
+jalankan perintah:
+
+ ```
+chmod +x /root/soal4_prab.sh
+./soal4_prab.sh
+```
 
 **`soal4_tedd.sh` (tedd)**
 
@@ -620,9 +699,110 @@ echo "=== Selesai ==="
 EOT
 chmod +x /root/soal4_tedd.sh
 ```
+jalankan perintah:
 
+ ```
+chmod +x /root/soal4_tedd.sh
+./soal4_tedd.sh
+```
 Urutan: `soal4_prab.sh` di prab, lalu `soal4_tedd.sh` di tedd (tunggu 5 sampai 10 detik), lalu `resolver_soal4.sh` di semua node non-router.
 
+ikuti urutan menjalakannya :
+
+### 1. PRAB
+
+ jalankan:
+
+```sh
+chmod +x /root/soal4_prab.sh
+/root/soal4_prab.sh
+```
+
+Setelah selesai, cek:
+
+```sh
+dig @192.225.5.2 k28.com +short
+```
+
+Harus keluar:
+
+```text
+192.225.3.3
+```
+
+### 2. TEDD
+
+```sh
+chmod +x /root/soal4_tedd.sh
+/root/soal4_tedd.sh
+```
+
+Tunggu 5–10 detik, lalu:
+
+```sh
+ls /var/bind/slave/
+```
+
+Harus ada:
+
+```text
+k28.com
+```
+
+Tes:
+
+```sh
+dig @192.225.5.3 k28.com +short
+```
+
+Harus:
+
+```text
+192.225.3.3
+```
+
+### 3. Resolver semua node
+
+Script `resolver_soal4.sh` harus sudah ada di setiap node.
+
+Di **alpha, beta, gamma, delta, epsilon, prab, tedd, abbey, penny, obladi, desmond, oblada, molly**, jalankan:
+
+```sh
+chmod +x /root/resolver_soal4.sh
+/root/resolver_soal4.sh
+```
+
+### 4. Cek akhir
+
+Di salah satu node non-router:
+
+```sh
+cat /etc/resolv.conf
+```
+
+Harus:
+
+```text
+nameserver 192.225.5.2
+nameserver 192.225.5.3
+nameserver 192.168.122.1
+```
+
+Lalu:
+
+```sh
+dig k28.com +short
+dig prab.k28.com +short
+dig google.com +short
+```
+
+Target:
+
+```text
+192.225.3.3
+192.225.5.2
+IP Google
+```
 ---
 ## Soal 5: A Record Semua Entitas
 
