@@ -1214,22 +1214,6 @@ Menambahkan record pada zona `k28.com` untuk mengelompokkan node berdasarkan per
 | www.k28.com | CNAME | penny.k28.com. |
 | static.k28.com | CNAME | abbey.k28.com. |
 
-### Hasil
-
-| Hostname | Hasil resolve | Sesuai |
-|----------|---------------|--------|
-| vault.k28.com | 192.225.5.4 dan 192.225.5.5 | Ya |
-| core.k28.com | 192.225.5.6 dan 192.225.5.7 | Ya |
-| www.k28.com | penny.k28.com. lalu 192.225.3.3 | Ya |
-| static.k28.com | abbey.k28.com. lalu 192.225.4.2 | Ya |
-
-- Hasil dari alpha, delta, prab, dan tedd identik.
-- Urutan dua IP pada `vault` dan `core` bisa berbeda karena round robin, dan itu normal.
-- Serial SOA di prab dan tedd sama (isi dengan angka dari screenshot).
-
-### Kesimpulan
-`vault` dan `core` mengarah ke masing-masing pasangan web statis dan dinamis, sedangkan `www` dan `static` menjadi alias gerbang utama. Hasil resolve konsisten di dua klien dan dua server DNS.
-
 ### Langkah Pengerjaan (Step by Step)
 
 **1. Cek zona sebelum diubah (prab)**
@@ -1239,7 +1223,7 @@ cat /var/bind/k28.com
 ```
 
 <!-- SS: zona sebelum ada vault/core/www/static -->
-![Zona awal](img/soal7-zona-awal.png)
+<img width="959" height="151" alt="image" src="https://github.com/user-attachments/assets/92ee95e1-9e63-4473-97bc-17f75a7a6d55" />
 
 **2. Tambahkan record (prab)**
 
@@ -1270,16 +1254,13 @@ named -u named
 ```
 
 <!-- SS: named-checkzone OK -->
-![Cek zona](img/soal7-checkzone.png)
+<img width="959" height="49" alt="image" src="https://github.com/user-attachments/assets/30455a02-3b96-4dff-abb2-ef5f4c0ddef2" />
 
 **5. Cek isi zona setelah diubah (prab)**
 
 ```sh
 grep -E "^(vault|core|www|static)" /var/bind/k28.com
 ```
-
-<!-- SS: 6 baris record -->
-![Zona di prab](img/soal7-zona.png)
 
 **6. Tes resolve dari prab**
 
@@ -1290,7 +1271,7 @@ done
 ```
 
 <!-- SS: hasil dig di prab -->
-![Tes prab](img/soal7-prab.png)
+<img width="959" height="398" alt="image" src="https://github.com/user-attachments/assets/13e3a4e1-4f85-435d-b2bb-2981cfb43a17" />
 
 **7. Verifikasi dari klien pertama (alpha)**
 
@@ -1302,15 +1283,14 @@ for h in vault core www static; do
 done
 ```
 
-<!-- SS: terminal alpha, prompt alpha:~# terlihat -->
-![Verifikasi alpha](img/soal7-alpha.png)
+<img width="959" height="323" alt="image" src="https://github.com/user-attachments/assets/fa22450d-9eb7-450d-8b8c-29d5668131d7" />
 
 **8. Verifikasi dari klien kedua (delta)**
 
 Perintah sama seperti langkah 7.
 
 <!-- SS: terminal delta, prompt delta:~# terlihat -->
-![Verifikasi delta](img/soal7-delta.png)
+<img width="959" height="326" alt="image" src="https://github.com/user-attachments/assets/f4fca44f-830f-4624-aa4b-5b5b182a4fa9" />
 
 **9. Cek sinkronisasi ke tedd**
 
@@ -1323,8 +1303,6 @@ done
 
 Kalau tedd masih menjawab data lama: `pkill named; rm -f /var/bind/slave/k28.com; named -u named; sleep 4`, lalu ulangi.
 
-<!-- SS: serial sama dengan prab, jawaban identik -->
-![Sinkronisasi tedd](img/soal7-tedd.png)
 
 ### Versi Otomatis (Script)
 
@@ -1396,6 +1374,53 @@ EOT
 chmod +x /root/soal7_cek.sh
 /root/soal7_cek.sh
 ```
+## jalankan perintah berikut:
+
+Menambahkan record `vault`, `core`, `www`, dan `static` pada PRAB lalu memastikan record dapat diakses dari client dan TEDD.
+
+### 1. PRAB
+
+```sh
+prab:~# chmod +x /root/soal7_prab.sh
+prab:~# /root/soal7_prab.sh
+```
+
+Script menambahkan record baru ke zona `k28.com` dan mengecek hasilnya.
+
+### 2. ALPHA
+
+```sh
+alpha:~# chmod +x /root/soal7_cek.sh
+alpha:~# /root/soal7_cek.sh
+```
+ Mengecek apakah record dari PRAB dapat di-resolve dari ALPHA.
+
+### 3. DELTA
+
+```sh
+delta:~# chmod +x /root/soal7_cek.sh
+delta:~# /root/soal7_cek.sh
+```
+ Mengecek resolusi record dari client kedua, yaitu DELTA.
+
+### 4. TEDD
+
+```sh
+tedd:~# chmod +x /root/soal7_cek.sh
+tedd:~# /root/soal7_cek.sh
+```
+Memastikan TEDD sebagai DNS slave sudah menerima record terbaru dari PRAB.
+
+### Hasil yang diharapkan
+
+```text
+vault  → 192.225.5.4
+vault  → 192.225.5.5
+core   → 192.225.5.6
+core   → 192.225.5.7
+www    → penny.k28.com.
+static → abbey.k28.com.
+```
 
 ---
 ## Soal 8: Reverse Zone dan PTR (Master prab, Slave tedd)
@@ -1422,22 +1447,7 @@ Mendeklarasikan reverse zone di prab (ns1) untuk segmen tempat abbey, penny, vau
 | 192.225.5.6 | core.k28.com. |
 | 192.225.5.7 | core.k28.com. |
 
-### Hasil
-
-| Query | Jawaban | Flag aa |
-|-------|---------|---------|
-| -x 192.225.3.3 | penny.k28.com. | Ya |
-| -x 192.225.4.2 | abbey.k28.com. | Ya |
-| -x 192.225.5.4 | vault.k28.com. | Ya |
-| -x 192.225.5.6 | core.k28.com. | Ya |
-
-- Query ke prab (`192.225.5.2`) dan tedd (`192.225.5.3`) sama-sama authoritative.
-- Serial ketiga reverse zone sama di prab dan tedd (isi dengan angka dari screenshot).
-
-### Kesimpulan
-Tiga reverse zone (segmen 3.x, 4.x, 5.x) dideklarasikan di prab sebagai master dan ditarik tedd sebagai slave. Pencarian balik alamat penny, abbey, vault, dan core mengembalikan hostname yang benar dan dijawab authoritative oleh kedua server.
-
-### Langkah Pengerjaan (Step by Step)
+### Langkah Pengerjaan 
 
 #### Di prab (master)
 
@@ -1472,9 +1482,6 @@ zone "5.225.192.in-addr.arpa" IN {
 EOF
 tail -40 /etc/bind/named.conf
 ```
-
-<!-- SS: tiga blok zona master -->
-![Deklarasi zona prab](img/soal8-namedconf-prab.png)
 
 **2. Buat tiga file zona reverse**
 
