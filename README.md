@@ -8,6 +8,35 @@
 | A. Algifari Rantiga Isdar | 5027251084 |
 
 ---
+# List SOAL
+
+- [Soal 1 — Konfigurasi IP Address dan Default Gateway](#soal-1--konfigurasi-ip-address-dan-default-gateway)
+- [Soal 2 — Konfigurasi NAT dan Akses Internet](#soal-2--konfigurasi-nat-dan-akses-internet)
+- [Soal 3 — Routing Internal dan Resolver](#soal-3--routing-internal-dan-resolver)
+- [Soal 4 — DNS Master-Slave dan Resolver](#soal-4-dns-master-slave-dan-resolver-k28)
+- [Soal 5 — A Record Semua Entitas](#soal-5-a-record-semua-entitas)
+- [Soal 6 — Verifikasi Zone Transfer PRAB dan TEDD](#soal-6-verifikasi-zone-transfer-prab-dan-tedd)
+- [Soal 7 — Web Server Statis dan Dinamis pada DNS](#soal-7-web-server-statis-dan-dinamis-pada-dns)
+- [Soal 8 — Reverse Zone dan PTR](#soal-8-reverse-zone-dan-ptr-master-prab-slave-tedd)
+- [Soal 9 — Web Statis Apache dan AutoIndex](#soal-9--web-statis-apache-dan-autoindex)
+- [Soal 10 — Web Dinamis Nginx dan PHP](#soal-10)
+- [Soal 11 — Reverse Proxy & Load Balancing](#soal-11--reverse-proxy--load-balancing)
+- [Soal 12 — Basic Authentication pada `/admin`](#soal-12--basic-authentication-pada-admin)
+- [Soal 13 — Redirect Penny dan Abbey](#soal-13)
+- [Soal 14 — Access Log dan X-Real-IP](#soal-14)
+- [Soal 15 — Reverse Proxy Path Khusus](#soal-15--reverse-proxy-path-khusus)
+- [Soal 16 — Stress Test ApacheBench](#soal-16--stress-test-apachebench)
+- [Soal 17 — TXT Record DNS](#soal-17--txt-record-dns)
+- [Soal 18 — Perubahan A Record, TTL, dan Sinkronisasi DNS](#soal-18--perubahan-a-record-ttl-dan-sinkronisasi-dns)
+- [Soal 19 — CNAME `outbound.k28.com`](#soal-19--cname-outboundk28com-ke-httpbadsslcom)
+- [Soal 20](#soal-20)
+
+---
+
+## 🔗 Navigasi
+
+[⬆️ Kembali ke Menu](#-menu-soal)
+---
 ## Soal 1 — Konfigurasi IP Address dan Default Gateway
 
 ### Tujuan
