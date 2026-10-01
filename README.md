@@ -32,11 +32,6 @@
 - [Soal 20](#soal-20)
 
 ---
-
-## 🔗 Navigasi
-
-[⬆️ Kembali ke Menu](#-menu-soal)
----
 ## Soal 1 — Konfigurasi IP Address dan Default Gateway
 
 ### Tujuan
