@@ -868,8 +868,6 @@ sleep 1
 named -u named
 ```
 
-<!-- SS: named-checkzone OK dan serial baru -->
-![Checkzone soal 5](img/soal5-checkzone.png)
 
 **5. Tes semua nama (prab)**
 
@@ -880,8 +878,9 @@ done
 dig @192.225.5.2 k28.com +short
 ```
 
-<!-- SS: hasil 14 nama dan apex (192.225.3.3) -->
-![Tes DNS prab](img/soal5-dig.png)
+hasil:
+
+<img width="959" height="247" alt="image" src="https://github.com/user-attachments/assets/f84da551-14fc-4ac9-94b9-7c6027a8b28e" />
 
 **6. Cek sinkronisasi di tedd**
 
@@ -890,6 +889,9 @@ dig @192.225.5.3 k28.com SOA +short
 dig @192.225.5.3 abbey.k28.com +short
 dig @192.225.5.3 molly.k28.com +short
 ```
+hasil:
+
+<img width="959" height="89" alt="image" src="https://github.com/user-attachments/assets/67cd0c76-5a2e-4c1e-b9aa-1b45e4e9749b" />
 
 Serial harus sama dengan prab. Kalau tedd masih menjawab data lama, hapus salinan lama:
 
@@ -899,9 +901,6 @@ rm -f /var/bind/slave/k28.com
 named -u named
 sleep 4
 ```
-
-<!-- SS: serial sama dan jawaban dari tedd -->
-![Sinkronisasi tedd](img/soal5-tedd.png)
 
 ### Versi Otomatis (Script)
 
@@ -1000,6 +999,194 @@ Target:
 abbey → 192.225.4.2
 molly → 192.225.5.7
 ```
+---
+## Soal 6: Verifikasi Zone Transfer PRAB dan TEDD
+
+### Tujuan
+
+Memastikan proses zone transfer dari **PRAB sebagai DNS Master** ke **TEDD sebagai DNS Slave** berjalan dengan baik. TEDD harus menerima salinan zona terbaru dari PRAB. Nilai serial SOA pada PRAB dan TEDD harus sama.
+
+### 1. Mengecek Serial SOA pada PRAB
+
+Pada console **PRAB**, dilakukan pengecekan serial SOA menggunakan perintah:
+
+```sh
+dig @192.225.5.2 k28.com SOA +short
+```
+
+Hasil:
+
+<img width="959" height="55" alt="image" src="https://github.com/user-attachments/assets/8448dfaa-e751-470f-9d76-c1855d54a43b" />
+
+### 2. Mengecek Serial SOA pada TEDD
+
+Selanjutnya dilakukan pengecekan pada **TEDD** menggunakan perintah:
+
+```sh
+dig @192.225.5.3 k28.com SOA +short
+```
+
+Hasil:
+
+<img width="959" height="52" alt="image" src="https://github.com/user-attachments/assets/4dfc6aaa-08a2-4946-83b6-b917cb559b62" />
+
+### 3. Mengecek Record Terbaru pada TEDD
+
+Untuk memastikan TEDD telah menerima zona terbaru dari PRAB, dilakukan pengecekan beberapa record:
+
+```sh
+dig @192.225.5.3 abbey.k28.com +short
+192.225.4.2
+
+dig @192.225.5.3 molly.k28.com +short
+192.225.5.7
+```
+
+Hasil tersebut menunjukkan bahwa record `abbey.k28.com` dan `molly.k28.com` sudah tersedia dan dapat dijawab oleh DNS TEDD.
+
+<img width="959" height="77" alt="image" src="https://github.com/user-attachments/assets/902e662c-3287-470b-8234-50b6da842dce" />
+
+
+### 4. Mengecek File Zona pada TEDD
+
+Salinan zona yang diterima TEDD juga dapat dilihat pada directory slave:
+
+```sh
+ ls -lh /var/bind/slave/k28.com
+```
+
+File `k28.com` terdapat pada directory tersebut, sehingga TEDD memiliki salinan zona dari PRAB.
+
+<img width="959" height="61" alt="image" src="https://github.com/user-attachments/assets/d24f1487-6946-45a8-b43b-89d5510a3778" />
+
+### Kesimpulan
+
+Berdasarkan hasil pengujian, proses **zone transfer dari PRAB ke TEDD berhasil dilakukan**. Hal ini dibuktikan dengan nilai serial SOA pada PRAB dan TEDD yang sama, yaitu `1790844358`. Selain itu, record `abbey.k28.com` dan `molly.k28.com` juga dapat diakses melalui TEDD. Dengan demikian, TEDD telah menerima dan menyimpan salinan zona terbaru dari PRAB.
+
+## Versi Otomatis (script)
+
+### 1. Script PRAB
+
+Pada **PRAB**, script `soal6_prab.sh` digunakan untuk membuat reverse zone sebagai master dan mengizinkan zone transfer ke TEDD.
+
+```sh
+prab:~# cat > /root/soal6_prab.sh <<'EOT'
+#!/bin/sh
+
+CONF="/etc/bind/named.conf"
+
+cat >> "$CONF" <<'EOT2'
+
+zone "3.225.192.in-addr.arpa" IN {
+    type master;
+    file "/var/bind/3.225.192.in-addr.arpa";
+    notify yes;
+    also-notify { 192.225.5.3; };
+    allow-transfer { 192.225.5.3; };
+};
+
+zone "4.225.192.in-addr.arpa" IN {
+    type master;
+    file "/var/bind/4.225.192.in-addr.arpa";
+    notify yes;
+    also-notify { 192.225.5.3; };
+    allow-transfer { 192.225.5.3; };
+};
+
+zone "5.225.192.in-addr.arpa" IN {
+    type master;
+    file "/var/bind/5.225.192.in-addr.arpa";
+    notify yes;
+    also-notify { 192.225.5.3; };
+    allow-transfer { 192.225.5.3; };
+};
+EOT2
+
+named-checkconf "$CONF" || exit 1
+named-checkzone 3.225.192.in-addr.arpa /var/bind/3.225.192.in-addr.arpa || exit 1
+named-checkzone 4.225.192.in-addr.arpa /var/bind/4.225.192.in-addr.arpa || exit 1
+named-checkzone 5.225.192.in-addr.arpa /var/bind/5.225.192.in-addr.arpa || exit 1
+
+pkill named 2>/dev/null
+sleep 1
+named -u named
+EOT
+```
+
+### Cara menjalankan PRAB
+
+```sh
+prab:~# chmod +x /root/soal6_prab.sh
+prab:~# /root/soal6_prab.sh
+```
+
+---
+
+### 2. Script TEDD
+
+Pada **TEDD**, script `soal6_tedd.sh` digunakan untuk membuat reverse zone sebagai slave dan mengecek kesamaan serial dengan PRAB.
+
+```sh
+tedd:~# cat > /root/soal6_tedd.sh <<'EOT'
+#!/bin/sh
+
+CONF="/etc/bind/named.conf"
+PRAB="192.225.5.2"
+
+cat >> "$CONF" <<EOT2
+
+zone "3.225.192.in-addr.arpa" IN {
+    type slave;
+    masters { $PRAB; };
+    file "/var/bind/slave/3.225.192.in-addr.arpa";
+};
+
+zone "4.225.192.in-addr.arpa" IN {
+    type slave;
+    masters { $PRAB; };
+    file "/var/bind/slave/4.225.192.in-addr.arpa";
+};
+
+zone "5.225.192.in-addr.arpa" IN {
+    type slave;
+    masters { $PRAB; };
+    file "/var/bind/slave/5.225.192.in-addr.arpa";
+};
+EOT2
+
+mkdir -p /var/bind/slave /var/run/named
+chown named:named /var/bind/slave /var/run/named
+
+named-checkconf "$CONF" || exit 1
+
+pkill named 2>/dev/null
+sleep 1
+named -u named
+sleep 5
+
+for z in k28.com 3.225.192.in-addr.arpa 4.225.192.in-addr.arpa 5.225.192.in-addr.arpa
+do
+    P=$(dig @192.225.5.2 "$z" SOA +short | awk '{print $3}')
+    T=$(dig @192.225.5.3 "$z" SOA +short | awk '{print $3}')
+    echo "$z: PRAB=$P TEDD=$T"
+done
+EOT
+```
+
+### Cara menjalankan TEDD
+
+```sh
+tedd:~# chmod +x /root/soal6_tedd.sh
+tedd:~# /root/soal6_tedd.sh
+```
+
+### Hasil yang dicari
+
+```text
+PRAB=SERIAL TEDD=SERIAL
+```
+
+Nilainya harus **sama**. Jika sama berarti **zone transfer berhasil**.
 
 ---
 ## Soal 7: Web Server Statis dan Dinamis pada DNS
