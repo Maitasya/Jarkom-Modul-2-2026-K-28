@@ -454,7 +454,7 @@ named -u named
 ```
 
 <!-- SS: named-checkzone OK, serial 1790000001 -->
-![Checkzone prab](img/soal4-checkzone.png)
+<img width="959" height="56" alt="image" src="https://github.com/user-attachments/assets/d9277603-0286-492f-94f8-0e23cf01e76c" />
 
 **3. Verifikasi prab**
 
@@ -473,8 +473,7 @@ Hasil yang benar:
 - `google.com` menjawab (forwarder berjalan).
 
 <!-- SS: dig k28.com (flags aa, jawaban 192.225.3.3) dan dig lainnya -->
-![Verifikasi prab 1](img/soal4-prab1.png)
-![Verifikasi prab 2](img/soal4-prab2.png)
+<img width="959" height="368" alt="image" src="https://github.com/user-attachments/assets/c73e33f1-2bfe-48bb-89af-1d57a4da458c" />
 
 **4. Konfigurasi tedd (slave)**
 
@@ -526,8 +525,7 @@ dig @192.225.5.3 k28.com SOA +short
 Hasil yang benar: file `k28.com` ada di `/var/bind/slave/`, flags `qr aa`, jawaban `192.225.3.3`, dan serial prab dan tedd sama (`1790000001`).
 
 <!-- SS: ls slave, dig @tedd k28.com, dan dua SOA -->
-![Verifikasi tedd 1](img/soal4-tedd1.png)
-![Verifikasi tedd 2](img/soal4-tedd2.png)
+<img width="959" height="266" alt="image" src="https://github.com/user-attachments/assets/66ce95c4-ce62-4f90-b7ba-0eb89b61c871" />
 
 **6. Ubah resolver di semua node non-router**
 
@@ -558,8 +556,8 @@ dig google.com +short
 
 Hasil yang benar: urutan resolver `192.225.5.2`, `192.225.5.3`, `192.168.122.1`. `k28.com` menjawab `192.225.3.3`, `prab.k28.com` menjawab `192.225.5.2`, dan `google.com` tetap menjawab.
 
-<!-- SS: resolv.conf dan hasil dig di salah satu node -->
-![Verifikasi resolver](img/soal4-resolver.png)
+<img width="959" height="450" alt="image" src="https://github.com/user-attachments/assets/3f0a04d4-2e0c-4af9-be06-e2cd79d45084" />
+
 
 ### Versi Otomatis (Script)
 
@@ -746,7 +744,7 @@ ls /var/bind/slave/
 Harus ada:
 
 ```text
-k28.com
+dig k28.com +short
 ```
 
 Tes:
@@ -963,9 +961,45 @@ EOT
 chmod +x /root/soal5_prab.sh
 /root/soal5_prab.sh
 ```
+Karena script **`soal5_prab.sh` sudah dibuat**, jalankan **di console PRAB** saja.
 
----
+```text
+prab:~#
+```
 
+### 1. Jalankan script
+
+```sh
+chmod +x /root/soal5_prab.sh
+/root/soal5_prab.sh
+```
+
+Tunggu sampai muncul:
+
+```text
+=== Selesai ===
+```
+
+### 2. Setelah itu pindah ke TEDD
+
+```text
+tedd:~#
+```
+
+Cek sinkronisasi:
+
+```sh
+dig @192.225.5.3 k28.com SOA +short
+dig @192.225.5.3 abbey.k28.com +short
+dig @192.225.5.3 molly.k28.com +short
+```
+
+Target:
+
+```text
+abbey → 192.225.4.2
+molly → 192.225.5.7
+```
 
 ---
 ## Soal 7: Web Server Statis dan Dinamis pada DNS
