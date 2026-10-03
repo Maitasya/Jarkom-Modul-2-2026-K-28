@@ -2647,6 +2647,10 @@ curl http://localhost/arsip/
 
 Hasil menampilkan daftar file dan folder di dalam `/arsip/`.
 
+<img width="959" height="278" alt="image" src="https://github.com/user-attachments/assets/3f15ec04-6ca2-4bea-a101-e39dcf03c12e" />
+
+<img width="959" height="297" alt="image" src="https://github.com/user-attachments/assets/e99a1e2b-d37a-47dd-a60a-d4ef347ada4a" />
+
 **Konfigurasi dan hasil pengujian Apache pada `obladi`.**
 
 <img width="959" height="209" alt="Screenshot 2026-09-30 183515" src="https://github.com/user-attachments/assets/059f4940-4dfc-4bc8-b378-138d1af5f7b8" />
@@ -2711,12 +2715,17 @@ dokumen1.txt
 dokumen2.txt
 laporan/
 ```
+<img width="959" height="75" alt="image" src="https://github.com/user-attachments/assets/375fdc88-c8d9-498b-9930-187f7b67851a" />
+
 
 Untuk melihat directory listing secara lengkap:
 
 ```bash
 curl http://localhost/arsip/
 ```
+<img width="959" height="306" alt="image" src="https://github.com/user-attachments/assets/e3344afe-657d-4f68-ba38-18826e8befeb" />
+
+<img width="959" height="275" alt="image" src="https://github.com/user-attachments/assets/c67542d1-80ac-4a30-89ac-addee208b6f2" />
 
 **Konfigurasi dan hasil pengujian Apache pada `desmond`.**
 
@@ -2725,6 +2734,30 @@ curl http://localhost/arsip/
 ### 4. Pengujian Hostname dari `delta`
 
 Pengujian dilakukan dari `delta` untuk memastikan hostname dapat digunakan.
+
+### Di DELTA jalankan ini
+
+```sh
+cat > /etc/resolv.conf <<'EOF'
+nameserver 192.225.5.2
+nameserver 192.225.5.3
+nameserver 192.168.122.1
+EOF
+```
+
+###  Cek
+
+```sh
+cat /etc/resolv.conf
+```
+
+Harus muncul:
+
+```text
+nameserver 192.225.5.2
+nameserver 192.225.5.3
+nameserver 192.168.122.1
+```
 
 ```bash
 dig obladi.k28.com +short
@@ -2803,6 +2836,9 @@ Kemudian akses menggunakan hostname:
 ```bash
 lynx http://vault.k28.com/arsip/
 ```
+<img width="959" height="254" alt="image" src="https://github.com/user-attachments/assets/742f373a-13ac-43f9-8eab-c2a98c23733c" />
+
+<img width="959" height="221" alt="image" src="https://github.com/user-attachments/assets/5a1f8f10-e0af-446e-a5a2-a5215b88fa80" />
 
 Browser teks `lynx` akan menampilkan halaman directory listing Apache. File dan folder di dalam `/arsip/` dapat dipilih dan dibuka melalui terminal.
 
@@ -3193,17 +3229,88 @@ File yang tersedia:
 index.php
 profil.php
 ```
+<img width="959" height="41" alt="image" src="https://github.com/user-attachments/assets/78da3f2e-dbbc-4d73-b8d9-93d37f1455c2" />
 
 ## Langkah 6 – Menjalankan PHP-FPM
 
 Cek terlebih dahulu apakah PHP-FPM sudah berjalan:
 
 ```sh
-ps | grep -q "[p]hp-fpm84"
+ps | grep php-fpm
+```
+
+Hasilnya kosong → **PHP-FPM belum berjalan**.
+
+Lalu cek:
+
+```sh
+apk info -e php84-fpm
+```
+
+Hasilnya kosong → **PHP-FPM belum ter-install**.
+
+Cek repository Alpine
+
+```sh
+cat /etc/apk/repositories
+```
+
+Cek koneksi internet
+
+```sh
+ping -c 3 8.8.8.8
+```
+
+**Bisa ping** → koneksi internet/IP OBLADA sebenarnya normal.
+
+Cek DNS
+
+```sh
+ping -c 3 dl-cdn.alpinelinux.org
+```
+
+Awalnya **`try again`** → berarti DNS OBLADA bermasalah.
+
+Perbaiki `/etc/resolv.conf`
+
+Kita isi:
+
+```sh
+cat > /etc/resolv.conf <<'EOF'
+nameserver 192.225.5.2
+nameserver 192.225.5.3
+nameserver 192.168.122.1
+EOF
+```
+
+Artinya OBLADA akan mencoba DNS:
+
+```text
+PRAB       → 192.225.5.2
+TEDD       → 192.225.5.3
+Gateway    → 192.168.122.1
+```
+
+Kemudian:
+
+```sh
+ping -c 3 dl-cdn.alpinelinux.org
+```
+
+**Berhasil** → DNS sudah normal.
+
+Update repository lagi
+
+Setelah DNS normal:
+
+```sh
+apk update
 ```
 
 Jika belum berjalan, jalankan:
-
+```
+apk add php84 php84-fpm
+```
 ```sh
 php-fpm84
 ```
@@ -3265,6 +3372,9 @@ Konfigurasi tersebut membuat hostname `oblada.k28.com` menggunakan direktori `/v
 ## Langkah 8 – Mengecek Konfigurasi Nginx
 
 Jalankan:
+```
+apk add nginx
+```
 
 ```sh
 nginx -t
@@ -3370,6 +3480,9 @@ Kemudian akses halaman beranda:
 ```sh
 lynx -reload http://oblada.k28.com/
 ```
+<img width="959" height="286" alt="image" src="https://github.com/user-attachments/assets/e2255d12-48e4-4d6b-aca0-f04c2d38f9fd" />
+
+<img width="959" height="286" alt="image" src="https://github.com/user-attachments/assets/e12e0076-b66b-4f11-b391-a6a4ea989ecd" />
 
 Untuk halaman profil:
 
