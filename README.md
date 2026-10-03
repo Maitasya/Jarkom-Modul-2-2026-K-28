@@ -77,51 +77,6 @@ Sesuai gambar topologi soal, rootkit tersambung ke lima switch:
 
 Node yang IP-nya ikut topologi (abbey di Switch4, repository di Switch3 satu segmen dengan prab dan tedd) diatur mengikuti wiring, karena IP harus cocok dengan switch tempat node tersambung.
 
-## Soal 1 — Konfigurasi IP Address dan Default Gateway
-
-### Tujuan
-
-Mengatur IP address dan default gateway seluruh node The Mesh dengan prefix `192.225.x.x`. Rootkit menjadi router pusat yang menghubungkan lima switch.
-
-### Topologi
-
-Sesuai gambar topologi soal, rootkit tersambung ke lima switch:
-
-| Interface rootkit | Switch                        | Node                                       | Subnet         |
-| ----------------- | ----------------------------- | ------------------------------------------ | -------------- |
-| eth4              | Switch6                       | alpha, beta, gamma                         | 192.225.1.0/24 |
-| eth5              | Switch7                       | delta, epsilon                             | 192.225.2.0/24 |
-| eth3              | Switch5                       | penny                                      | 192.225.3.0/24 |
-| eth2              | Switch4                       | abbey                                      | 192.225.4.0/24 |
-| eth1              | Switch1 (Switch2 dan Switch3) | prab, tedd, obladi, desmond, oblada, molly | 192.225.5.0/24 |
-
-<img width="959" height="415" alt="Screenshot 2026-09-28 204904" src="https://github.com/user-attachments/assets/737fa1bd-ff35-4f0c-adb9-66d82673ad52" />
-
-### Tabel Konfigurasi IP
-
-| No | Simpul  | Interface | IP Address     | Gateway     |
-| -- | ------- | --------- | -------------- | ----------- |
-| 1  | rootkit | eth1      | 192.225.5.1/24 | -           |
-| 2  | rootkit | eth2      | 192.225.4.1/24 | -           |
-| 3  | rootkit | eth3      | 192.225.3.1/24 | -           |
-| 4  | rootkit | eth4      | 192.225.1.1/24 | -           |
-| 5  | rootkit | eth5      | 192.225.2.1/24 | -           |
-| 6  | alpha   | eth0      | 192.225.1.2/24 | 192.225.1.1 |
-| 7  | beta    | eth0      | 192.225.1.3/24 | 192.225.1.1 |
-| 8  | gamma   | eth0      | 192.225.1.4/24 | 192.225.1.1 |
-| 9  | delta   | eth0      | 192.225.2.2/24 | 192.225.2.1 |
-| 10 | epsilon | eth0      | 192.225.2.3/24 | 192.225.2.1 |
-| 11 | abbey   | eth0      | 192.225.4.2/24 | 192.225.4.1 |
-| 12 | penny   | eth0      | 192.225.3.3/24 | 192.225.3.1 |
-| 13 | obladi  | eth0      | 192.225.5.4/24 | 192.225.5.1 |
-| 14 | desmond | eth0      | 192.225.5.5/24 | 192.225.5.1 |
-| 15 | oblada  | eth0      | 192.225.5.6/24 | 192.225.5.1 |
-| 16 | molly   | eth0      | 192.225.5.7/24 | 192.225.5.1 |
-| 17 | prab    | eth0      | 192.225.5.2/24 | 192.225.5.1 |
-| 18 | tedd    | eth0      | 192.225.5.3/24 | 192.225.5.1 |
-
-Node yang IP-nya mengikuti topologi diatur sesuai dengan switch tempat node tersebut terhubung, sehingga IP dan gateway berada pada subnet yang sesuai.
-
 ### Langkah Pengerjaan (Step by Step)
 
 **1. Konfigurasi IP pada rootkit**
@@ -172,12 +127,11 @@ Kemudian lakukan ping dari node ke gateway untuk memastikan paket masuk melalui 
 
 ### Versi Otomatis (Script)
 
-Script `soal1.sh` dibuat pada setiap node. Ubah nilai `IP` dan `GW` sesuai tabel.
+Script `soal1_rootkit.sh` dibuat pada setiap node. Ubah nilai `IP` dan `GW` sesuai tabel.
 
 Contoh untuk **obladi**:
 
 ```sh
-cat > /root/soal1.sh <<'EOF'
 #!/bin/sh
 
 IP="192.225.5.4"
@@ -200,9 +154,11 @@ EOT
 ip -br addr
 ip route
 EOF
-
-chmod +x /root/soal1.sh
-/root/soal1.sh
+```
+jalankan :
+```
+chmod +x /root/soal1_rootkit.sh
+/root/soal1_rootkit.sh
 ```
 
 Nilai `IP` dan `GW` untuk node lainnya:
@@ -235,73 +191,164 @@ Mengaktifkan *IP forwarding* dan konfigurasi NAT pada `rootkit` agar seluruh jar
 
 ### Konfigurasi Rootkit
 
-Pada node **`rootkit`**, konfigurasi `/etc/network/interfaces` ditambahkan:
+Pada node **`rootkit`**, konfigurasi IP forwarding dan NAT dilakukan dengan perintah berikut:
 
-```text
-up sysctl -w net.ipv4.ip_forward=1
-up iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
-up iptables -A FORWARD -i eth1 -o eth0 -j ACCEPT
-up iptables -A FORWARD -i eth2 -o eth0 -j ACCEPT
-up iptables -A FORWARD -i eth3 -o eth0 -j ACCEPT
-up iptables -A FORWARD -i eth4 -o eth0 -j ACCEPT
-up iptables -A FORWARD -i eth5 -o eth0 -j ACCEPT
-up iptables -A FORWARD -i eth0 -m state --state ESTABLISHED,RELATED -j ACCEPT
+```sh
+sysctl -w net.ipv4.ip_forward=1
+
+iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+
+iptables -A FORWARD -i eth1 -o eth0 -j ACCEPT
+iptables -A FORWARD -i eth2 -o eth0 -j ACCEPT
+iptables -A FORWARD -i eth3 -o eth0 -j ACCEPT
+iptables -A FORWARD -i eth4 -o eth0 -j ACCEPT
+iptables -A FORWARD -i eth5 -o eth0 -j ACCEPT
+
+iptables -A FORWARD -i eth0 -m state --state ESTABLISHED,RELATED -j ACCEPT
 ```
 
-Konfigurasi tersebut mengaktifkan *IP forwarding*, melakukan *MASQUERADE* untuk jaringan internal, serta mengizinkan lalu lintas dari seluruh interface internal `eth1`–`eth5` menuju interface WAN `eth0`.
+Konfigurasi tersebut mengaktifkan *IP forwarding*, melakukan *MASQUERADE* pada interface WAN `eth0`, serta mengizinkan lalu lintas dari seluruh jaringan internal menuju internet.
 
-## Verifikasi
+## Langkah Pengerjaan (Step by Step)
 
-Pengujian dilakukan pada **console masing-masing client/node internal**, bukan hanya pada `rootkit`.
+**1. Pastikan interface WAN `eth0` aktif pada rootkit**
 
-Contoh pada **alpha**:
+```sh
+ip -br addr
+```
 
-```bash
+Pastikan `eth0` memiliki alamat IP dan berstatus `UP`.
+
+**2. Aktifkan IP forwarding**
+
+```sh
+sysctl -w net.ipv4.ip_forward=1
+```
+
+Kemudian periksa:
+
+```sh
+sysctl net.ipv4.ip_forward
+```
+
+Hasil yang diharapkan:
+
+```text
+net.ipv4.ip_forward = 1
+```
+
+**3. Aktifkan NAT dan forwarding**
+
+```sh
+iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+
+iptables -A FORWARD -i eth1 -o eth0 -j ACCEPT
+iptables -A FORWARD -i eth2 -o eth0 -j ACCEPT
+iptables -A FORWARD -i eth3 -o eth0 -j ACCEPT
+iptables -A FORWARD -i eth4 -o eth0 -j ACCEPT
+iptables -A FORWARD -i eth5 -o eth0 -j ACCEPT
+
+iptables -A FORWARD -i eth0 -m state --state ESTABLISHED,RELATED -j ACCEPT
+```
+
+**4. Uji akses internet dari node internal**
+
+Contoh pada `alpha`:
+
+```sh
 ping -c 3 8.8.8.8
 ```
 
 Kemudian:
 
-```bash
+```sh
 ping -c 3 google.com
 ```
-
 <img width="410" height="179" alt="image" src="https://github.com/user-attachments/assets/a74ae3e5-43d8-4cae-a905-97583a53a178" />
 
+Jika `8.8.8.8` berhasil tetapi `google.com` gagal, periksa DNS:
 
-Pengujian yang sama dapat dilakukan pada node internal lainnya untuk memastikan seluruh jaringan dapat mengakses internet. Hasil pengujian menunjukkan bahwa node internal dapat menjangkau alamat IP publik `8.8.8.8` dan melakukan koneksi menggunakan nama domain `google.com`.  Ketika pengujian `ping google.com` mengalami kegagalan, dilakukan pengecekan konfigurasi DNS pada node yang bermasalah menggunakan:
-
-```bash
+```sh
 cat /etc/resolv.conf
 ```
 
-Jika konfigurasi DNS belum sesuai, file `/etc/resolv.conf` diperbaiki menggunakan:
-
-```bash
-nano /etc/resolv.conf
-```
-
-Kemudian ditambahkan nameserver:
+Jika diperlukan, tambahkan:
 
 ```text
 nameserver 8.8.8.8
 nameserver 1.1.1.1
 ```
 
-Setelah konfigurasi DNS diperbaiki, dilakukan pengujian kembali menggunakan:
+Kemudian lakukan pengujian kembali:
 
-```bash
+```sh
 ping -c 3 google.com
 ```
 
-Hasil pengujian digunakan untuk memastikan node dapat melakukan resolusi nama domain dan terhubung ke internet.
-
 ### Versi Otomatis (Script)
 
-Script `soal2.sh` dibuat di tiap node. Contoh di bawah untuk **obladi**:
+Agar konfigurasi NAT dan pengecekan dapat dilakukan dengan lebih cepat saat demo, dibuat script `soal2.sh` pada **rootkit**:
 
 ```sh
 #!/bin/sh
+
+echo "=== SOAL 2 - KONFIGURASI NAT ==="
+
+echo "[1] Mengaktifkan IP forwarding..."
+sysctl -w net.ipv4.ip_forward=1
+
+echo "[2] Mengaktifkan NAT..."
+iptables -t nat -C POSTROUTING -o eth0 -j MASQUERADE 2>/dev/null ||
+iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+
+echo "[3] Mengaktifkan forwarding jaringan internal..."
+for IFACE in eth1 eth2 eth3 eth4 eth5
+do
+    iptables -C FORWARD -i "$IFACE" -o eth0 -j ACCEPT 2>/dev/null ||
+    iptables -A FORWARD -i "$IFACE" -o eth0 -j ACCEPT
+done
+
+echo "[4] Mengizinkan koneksi balasan..."
+iptables -C FORWARD -i eth0 -m state --state ESTABLISHED,RELATED -j ACCEPT 2>/dev/null ||
+iptables -A FORWARD -i eth0 -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+echo
+echo "=== VERIFIKASI ROOTKIT ==="
+echo "[IP Forwarding]"
+sysctl net.ipv4.ip_forward
+
+echo
+echo "[WAN]"
+ip -br addr show eth0
+
+echo
+echo "[NAT]"
+iptables -t nat -L POSTROUTING -n -v
+
+echo
+echo "[FORWARD]"
+iptables -L FORWARD -n -v
+
+echo
+echo "=== SELESAI ==="
+```
+
+Jalankan pada **rootkit**:
+
+```sh
+chmod +x /root/soal2_rootkit.sh
+/root/soal2_rootkit.sh
+```
+
+Setelah script selesai, uji dari salah satu node internal:
+
+```sh
+ping -c 3 8.8.8.8
+ping -c 3 google.com
+```
+atau pakek scrip soal2_cek.sh
+
+```#!/bin/sh
 
 echo "=== SOAL 2 CEK $(hostname) ==="
 
@@ -327,13 +374,17 @@ ping -c 3 google.com
 
 echo "=== SELESAI ==="
 ```
-jalankan perintah beriku:
-```
+Jalankan pada **node lain**:
+
+```sh
 chmod +x /root/soal2_cek.sh
 /root/soal2_cek.sh
 ```
 
+Jika kedua pengujian berhasil, maka konfigurasi NAT, *IP forwarding*, dan akses internet pada jaringan internal telah berjalan.
+
 ---
+
 # Soal 3 — Routing Internal dan Resolver
 
 ## Tujuan
@@ -342,19 +393,14 @@ Memastikan seluruh Entitas dapat saling berkomunikasi melalui `rootkit` sebagai 
 
 ### Mengaktifkan Routing pada Rootkit
 
-Pada **console `rootkit`**, aktifkan IP forwarding:
+Pada console `rootkit`:
 
-```bash
+```sh
 sysctl -w net.ipv4.ip_forward=1
-```
-
-Kemudian cek:
-
-```bash
 sysctl net.ipv4.ip_forward
 ```
 
-Nilai yang diperoleh harus:
+Hasil yang diharapkan:
 
 ```text
 net.ipv4.ip_forward = 1
@@ -362,64 +408,57 @@ net.ipv4.ip_forward = 1
 
 ### Menambahkan Resolver pada Host Non-Router
 
-Pada setiap **host selain `rootkit`**, cek konfigurasi DNS:
+Pada setiap host non-router, cek terlebih dahulu:
 
-```bash
+```sh
 cat /etc/resolv.conf
 ```
 
-Jika belum terdapat resolver `192.168.122.1`, edit file:
+Jika `192.168.122.1` belum tersedia, tambahkan:
 
-```bash
-nano /etc/resolv.conf
+```sh
+echo "nameserver 192.168.122.1" >> /etc/resolv.conf
 ```
 
-Tambahkan:
-
-```text
-nameserver 192.168.122.1
-```
-
-Jika resolver tersebut sudah tersedia, tidak perlu menambahkan resolver lain.
+Jika resolver `192.168.122.1` sudah tersedia, tidak perlu menambahkan resolver lain seperti Google.
 
 ### Pengujian Routing Internal
 
-Pengujian dilakukan dari host non-router dengan melakukan ping ke gateway dan host pada jaringan lain.
+Dari salah satu host, misalnya `alpha`:
 
-Contoh dari **alpha**:
-
-```bash
+```sh
 ping -c 3 192.225.1.1
-```
-
-Kemudian menguji komunikasi lintas jaringan, misalnya:
-
-```bash
 ping -c 3 192.225.5.2
 ```
 
-Jika berhasil, berarti paket dapat melewati `rootkit` menuju jaringan internal lainnya.
+Perintah pertama menguji koneksi ke `rootkit`, sedangkan perintah kedua menguji komunikasi lintas jaringan melalui `rootkit`.
 
-###  Pengujian DNS
+### Pengujian DNS
 
-Pada host non-router, dilakukan pengujian resolusi nama domain:
-
-```bash
+```sh
 ping -c 3 google.com
 ```
 
-Pengujian ini memastikan resolver dapat menerjemahkan nama domain menjadi alamat IP.
+Jika berhasil, berarti resolver dan koneksi jaringan sudah dapat digunakan.
 
 ### Versi Otomatis (Script)
 
-Script `soal3.sh` dibuat di tiap node. Contoh di bawah untuk **obladi**:
+Script `soal3.sh` dibuat pada setiap **host non-router**. Isi script sama untuk semua host:
 
-```
+```sh
 #!/bin/sh
 
 echo "=== SOAL 3 $(hostname) ==="
 
 echo "[1] RESOLVER"
+
+if grep -q "192.168.122.1" /etc/resolv.conf; then
+    echo "Resolver 192.168.122.1 sudah tersedia"
+else
+    echo "nameserver 192.168.122.1" >> /etc/resolv.conf
+    echo "Resolver 192.168.122.1 ditambahkan"
+fi
+
 cat /etc/resolv.conf
 
 echo
@@ -429,7 +468,12 @@ ip route | grep default
 echo
 echo "[3] CEK GATEWAY"
 GW=$(ip route | awk '/default/ {print $3; exit}')
-ping -c 3 "$GW"
+
+if [ -n "$GW" ]; then
+    ping -c 3 "$GW"
+else
+    echo "Default gateway tidak ditemukan"
+fi
 
 echo
 echo "[4] CEK LINTAS JARINGAN"
@@ -441,12 +485,20 @@ ping -c 3 google.com
 
 echo "=== SELESAI ==="
 ```
-jalankan dengan perintah :
 
-```
-chmod +x /root/soal1.sh
+Script dibuat dan dijalankan dengan:
+
+```sh
+cat > /root/soal3.sh <<'EOF'
+# isi script soal3.sh
+EOF
+
+chmod +x /root/soal3.sh
 /root/soal3.sh
 ```
+
+Script tersebut dapat digunakan dengan isi yang sama pada `alpha`, `beta`, `gamma`, `delta`, `epsilon`, `abbey`, `penny`, `prab`, `tedd`, `obladi`, `desmond`, `oblada`, dan `molly`.
+
 hasil:
 <img width="959" height="481" alt="image" src="https://github.com/user-attachments/assets/f5f3c478-fe55-4401-8068-b8831ce6df52" />
 
@@ -534,7 +586,6 @@ sleep 1
 named -u named
 ```
 
-<!-- SS: named-checkzone OK, serial 1790000001 -->
 <img width="959" height="56" alt="image" src="https://github.com/user-attachments/assets/d9277603-0286-492f-94f8-0e23cf01e76c" />
 
 **3. Verifikasi prab**
@@ -598,6 +649,8 @@ sleep 5
 
 ```sh
 ls -l /var/bind/slave/
+```
+```
 dig @192.225.5.3 k28.com
 dig @192.225.5.2 k28.com SOA +short
 dig @192.225.5.3 k28.com SOA +short
@@ -713,9 +766,9 @@ echo "=== Jalankan named ==="
 pkill named 2>/dev/null
 sleep 1
 named -u named
+sleep 2
 echo "=== Selesai ==="
 EOT
-chmod +x /root/soal4_prab.sh
 ```
 jalankan perintah:
 
@@ -774,6 +827,13 @@ named-checkconf /etc/bind/named.conf
 echo "=== Jalankan named ==="
 sleep 1
 named -u named
+
+echo "=== Tunggu zone transfer dari PRAB ==="
+sleep 5
+
+echo "=== Cek file slave ==="
+ls -l /var/bind/slave/
+
 echo "=== Selesai ==="
 EOT
 chmod +x /root/soal4_tedd.sh
@@ -886,36 +946,119 @@ IP Google
 ## Soal 5: A Record Semua Entitas
 
 ### Tujuan
-Menambahkan A record semua entitas ke zona `k28.com` di prab, lalu memastikan tedd menarik zona terbaru.
+
+Menamai seluruh Entitas (*hostname*) sesuai glosarium dan memastikan setiap host mengenali nama tersebut secara *system-wide*. Selanjutnya, menambahkan A record semua entitas ke zona `k28.com` di `prab`, lalu memastikan `tedd` menarik zona terbaru.
 
 ### Tabel Record
 
-| Hostname | IP |
-|----------|----|
-| rootkit | 192.225.5.1 |
-| alpha | 192.225.1.2 |
-| beta | 192.225.1.3 |
-| gamma | 192.225.1.4 |
-| delta | 192.225.2.2 |
-| epsilon | 192.225.2.3 |
-| abbey | 192.225.4.2 |
-| penny | 192.225.3.3 |
-| obladi | 192.225.5.4 |
-| desmond | 192.225.5.5 |
-| oblada | 192.225.5.6 |
-| molly | 192.225.5.7 |
+| Hostname | IP          |
+| -------- | ----------- |
+| rootkit  | 192.225.5.1 |
+| alpha    | 192.225.1.2 |
+| beta     | 192.225.1.3 |
+| gamma    | 192.225.1.4 |
+| delta    | 192.225.2.2 |
+| epsilon  | 192.225.2.3 |
+| abbey    | 192.225.4.2 |
+| penny    | 192.225.3.3 |
+| prab     | 192.225.5.2 |
+| tedd     | 192.225.5.3 |
+| obladi   | 192.225.5.4 |
+| desmond  | 192.225.5.5 |
+| oblada   | 192.225.5.6 |
+| molly    | 192.225.5.7 |
 
-`prab`, `tedd`, dan apex `k28.com` sudah ada dari soal 4.
+`prab`, `tedd`, dan apex `k28.com` sudah ada dari Soal 4 sehingga tidak dibuat ulang pada bagian penambahan record.
 
 ### Langkah Pengerjaan (Step by Step)
 
-**1. Cek zona sebelum diubah (prab)**
+**1. Konfigurasi hostname setiap Entitas**
+
+Pada masing-masing node, hostname diatur sesuai nama Entitas.
+
+Contoh pada `alpha`:
+
+```sh
+hostname alpha
+echo "alpha" > /etc/hostname
+```
+
+Contoh pada `beta`:
+
+```sh
+hostname beta
+echo "beta" > /etc/hostname
+```
+
+Konfigurasi dilakukan sesuai nama masing-masing:
+
+| Node    | Hostname  |
+| ------- | --------- |
+| rootkit | `rootkit` |
+| alpha   | `alpha`   |
+| beta    | `beta`    |
+| gamma   | `gamma`   |
+| delta   | `delta`   |
+| epsilon | `epsilon` |
+| prab    | `prab`    |
+| tedd    | `tedd`    |
+| abbey   | `abbey`   |
+| penny   | `penny`   |
+| obladi  | `obladi`  |
+| desmond | `desmond` |
+| oblada  | `oblada`  |
+| molly   | `molly`   |
+
+Verifikasi pada setiap node:
+
+```sh
+hostname
+cat /etc/hostname
+```
+
+**2. Menambahkan pemetaan hostname secara system-wide**
+
+Pada setiap node, tambahkan pemetaan seluruh Entitas ke `/etc/hosts`:
+
+```sh
+cat > /etc/hosts <<'EOF'
+127.0.0.1 localhost
+192.225.5.1 rootkit rootkit.k28.com
+192.225.1.2 alpha alpha.k28.com
+192.225.1.3 beta beta.k28.com
+192.225.1.4 gamma gamma.k28.com
+192.225.2.2 delta delta.k28.com
+192.225.2.3 epsilon epsilon.k28.com
+192.225.5.2 prab prab.k28.com
+192.225.5.3 tedd tedd.k28.com
+192.225.4.2 abbey abbey.k28.com
+192.225.3.3 penny penny.k28.com
+192.225.5.4 obladi obladi.k28.com
+192.225.5.5 desmond desmond.k28.com
+192.225.5.6 oblada oblada.k28.com
+192.225.5.7 molly molly.k28.com
+EOF
+```
+
+Verifikasi:
+
+```sh
+getent hosts alpha
+getent hosts prab
+getent hosts molly
+```
+
+Hasil menunjukkan IP yang sesuai dengan hostname.
+
+**3. Cek zona sebelum diubah (prab)**
+
+Pada console `prab`:
 
 ```sh
 cat /var/bind/k28.com
 ```
 
-**2. Tambahkan record (prab)**
+**4. Tambahkan record (prab)**
 
 ```sh
 cat >> /var/bind/k28.com <<'EOF'
@@ -934,61 +1077,161 @@ molly   IN  A   192.225.5.7
 EOF
 ```
 
-**3. Naikkan serial supaya tedd menarik zona baru (prab)**
+`prab` dan `tedd` tidak ditambahkan kembali karena record tersebut sudah dibuat pada Soal 4.
+
+**5. Naikkan serial supaya tedd menarik zona baru (prab)**
 
 ```sh
 sed -i "s/[0-9]\{10\}\( *; Serial\)/$(date +%s)\1/" /var/bind/k28.com
 ```
 
-**4. Cek zona lalu muat ulang named (prab)**
+**6. Cek zona lalu muat ulang named (prab)**
 
 ```sh
 named-checkzone k28.com /var/bind/k28.com
-pkill named
+pkill named 2>/dev/null
 sleep 1
 named -u named
+sleep 2
 ```
 
+Jika `named-checkzone` menghasilkan `OK`, zona dapat dimuat kembali.
 
-**5. Tes semua nama (prab)**
+**7. Tes semua nama (prab)**
 
 ```sh
 for h in rootkit alpha beta gamma delta epsilon prab tedd abbey penny obladi desmond oblada molly; do
-    echo -n "$h: "; dig @192.225.5.2 $h.k28.com +short
+    echo -n "$h: "
+    dig @192.225.5.2 $h.k28.com +short
 done
+```
+
+Hasil menunjukkan setiap hostname memiliki IP sesuai tabel.
+<img width="959" height="247" alt="image" src="https://github.com/user-attachments/assets/f84da551-14fc-4ac9-94b9-7c6027a8b28e" />
+
+Apex juga diuji:
+
+```sh
 dig @192.225.5.2 k28.com +short
 ```
 
-hasil:
+Hasil:
 
-<img width="959" height="247" alt="image" src="https://github.com/user-attachments/assets/f84da551-14fc-4ac9-94b9-7c6027a8b28e" />
+```text
+192.225.3.3
+```
 
-**6. Cek sinkronisasi di tedd**
+**8. Cek sinkronisasi di tedd**
+
+Pada console `tedd`:
 
 ```sh
 dig @192.225.5.3 k28.com SOA +short
 dig @192.225.5.3 abbey.k28.com +short
 dig @192.225.5.3 molly.k28.com +short
 ```
-hasil:
 
+Hasil yang benar:
 <img width="959" height="89" alt="image" src="https://github.com/user-attachments/assets/67cd0c76-5a2e-4c1e-b9aa-1b45e4e9749b" />
 
-Serial harus sama dengan prab. Kalau tedd masih menjawab data lama, hapus salinan lama:
-
-```sh
-pkill named
-rm -f /var/bind/slave/k28.com
-named -u named
-sleep 4
+```text
+abbey → 192.225.4.2
+molly → 192.225.5.7
 ```
 
+Serial pada `tedd` harus sama dengan serial pada `prab`.
+
+Jika tedd masih menjawab data lama, lakukan:
+
+```sh
+pkill named 2>/dev/null
+rm -f /var/bind/slave/k28.com
+named -u named
+sleep 5
+```
+
+Kemudian ulangi pengujian DNS.
+
 ### Versi Otomatis (Script)
+
+| Script              | Node    | Fungsi                                                          |
+| ------------------- | ------- | --------------------------------------------------------------- |
+| `hostname_soal5.sh` | 14 node | Mengatur hostname dan `/etc/hosts`                              |
+| `soal5_prab.sh`     | prab    | Menambahkan A record, menaikkan serial, dan memuat ulang master |
+| `soal5_tedd.sh`     | tedd    | Memastikan slave mengambil zona terbaru                         |
+
+**`hostname_soal5.sh`**
+
+Script ini dibuat dengan nama hostname yang berbeda sesuai node. Bagian `HOSTNAME` disesuaikan dengan node tempat script dijalankan.
+
+```sh
+cat > /root/hostname_soal5.sh <<'EOT'
+#!/bin/sh
+
+HOSTNAME_NODE="$1"
+
+if [ -z "$HOSTNAME_NODE" ]; then
+    echo "Gunakan: /root/hostname_soal5.sh <hostname>"
+    exit 1
+fi
+
+echo "=== KONFIGURASI HOSTNAME ==="
+
+hostname "$HOSTNAME_NODE"
+echo "$HOSTNAME_NODE" > /etc/hostname
+
+cat > /etc/hosts <<'EOF'
+127.0.0.1 localhost
+192.225.5.1 rootkit rootkit.k28.com
+192.225.1.2 alpha alpha.k28.com
+192.225.1.3 beta beta.k28.com
+192.225.1.4 gamma gamma.k28.com
+192.225.2.2 delta delta.k28.com
+192.225.2.3 epsilon epsilon.k28.com
+192.225.5.2 prab prab.k28.com
+192.225.5.3 tedd tedd.k28.com
+192.225.4.2 abbey abbey.k28.com
+192.225.3.3 penny penny.k28.com
+192.225.5.4 obladi obladi.k28.com
+192.225.5.5 desmond desmond.k28.com
+192.225.5.6 oblada oblada.k28.com
+192.225.5.7 molly molly.k28.com
+EOF
+
+echo "Hostname: $(hostname)"
+echo
+echo "=== /etc/hosts ==="
+cat /etc/hosts
+echo
+echo "=== SELESAI ==="
+EOT
+
+chmod +x /root/hostname_soal5.sh
+```
+
+Contoh penggunaan pada `alpha`:
+
+```sh
+/root/hostname_soal5.sh alpha
+```
+
+Pada `beta`:
+
+```sh
+/root/hostname_soal5.sh beta
+```
+
+Dan seterusnya sesuai nama node.
+
+---
+
+**`soal5_prab.sh` (prab)**
 
 ```sh
 cat > /root/soal5_prab.sh <<'EOT'
 #!/bin/sh
-echo "=== Soal 5: A record semua entitas ==="
+
+echo "=== SOAL 5: A RECORD SEMUA ENTITAS ==="
 
 ZONA="/var/bind/k28.com"
 
@@ -997,12 +1240,15 @@ if [ ! -f "$ZONA" ]; then
     exit 1
 fi
 
-# Hapus record lama supaya tidak dobel kalau script dijalankan ulang
+echo "[1] HAPUS RECORD LAMA"
+
 for h in rootkit alpha beta gamma delta epsilon abbey penny obladi desmond oblada molly; do
-    sed -i "/^$h[[:space:]]/d" $ZONA
+    sed -i "/^$h[[:space:]]/d" "$ZONA"
 done
 
-cat >> $ZONA <<'EOF'
+echo "[2] TAMBAHKAN A RECORD"
+
+cat >> "$ZONA" <<'EOF'
 rootkit IN  A   192.225.5.1
 alpha   IN  A   192.225.1.2
 beta    IN  A   192.225.1.3
@@ -1017,34 +1263,82 @@ oblada  IN  A   192.225.5.6
 molly   IN  A   192.225.5.7
 EOF
 
-# Naikkan serial supaya tedd menarik zona baru
-sed -i "s/[0-9]\{10\}\( *; Serial\)/$(date +%s)\1/" $ZONA
+echo "[3] NAIKKAN SERIAL"
 
-echo "=== Cek zona ==="
-named-checkzone k28.com $ZONA || exit 1
+sed -i "s/[0-9]\{10\}\( *; Serial\)/$(date +%s)\1/" "$ZONA"
 
-echo "=== Muat ulang named ==="
+echo "[4] CEK ZONA"
+
+named-checkzone k28.com "$ZONA" || exit 1
+
+echo "[5] MUAT ULANG NAMED"
+
 pkill named 2>/dev/null
 sleep 1
 named -u named
 sleep 2
 
-echo "=== Tes DNS ==="
+echo "[6] TES DNS"
+
 for h in rootkit alpha beta gamma delta epsilon prab tedd abbey penny obladi desmond oblada molly; do
     echo -n "$h: "
-    dig @192.225.5.2 $h.k28.com +short
+    dig @192.225.5.2 "$h.k28.com" +short
 done
+
 echo -n "k28.com (apex): "
 dig @192.225.5.2 k28.com +short
-echo "=== Selesai ==="
+
+echo "=== SOAL 5 PRAB SELESAI ==="
 EOT
+
 chmod +x /root/soal5_prab.sh
+```
+
+Jalankan **di PRAB**:
+
+```sh
 /root/soal5_prab.sh
 ```
-Karena script **`soal5_prab.sh` sudah dibuat**, jalankan **di console PRAB** saja.
 
-```text
-prab:~#
+---
+
+**`soal5_tedd.sh` (tedd)**
+
+Tambahkan script ini supaya bagian TEDD juga bisa dilakukan otomatis setelah PRAB diperbarui:
+
+```sh
+cat > /root/soal5_tedd.sh <<'EOT'
+#!/bin/sh
+
+echo "=== SOAL 5: SINKRONISASI TEDD ==="
+
+echo "[1] TUNGGU ZONE TRANSFER"
+sleep 5
+
+echo "[2] CEK FILE SLAVE"
+ls -l /var/bind/slave/
+
+echo "[3] CEK SOA TEDD"
+dig @192.225.5.3 k28.com SOA +short
+
+echo "[4] CEK A RECORD"
+
+echo -n "abbey: "
+dig @192.225.5.3 abbey.k28.com +short
+
+echo -n "molly: "
+dig @192.225.5.3 molly.k28.com +short
+
+echo "=== SOAL 5 TEDD SELESAI ==="
+EOT
+
+chmod +x /root/soal5_tedd.sh
+```
+
+Jalankan **di TEDD setelah script PRAB selesai**:
+
+```sh
+/root/soal5_tedd.sh
 ```
 
 ### 1. Jalankan script
@@ -1127,13 +1421,12 @@ Hasil tersebut menunjukkan bahwa record `abbey.k28.com` dan `molly.k28.com` suda
 
 <img width="959" height="77" alt="image" src="https://github.com/user-attachments/assets/902e662c-3287-470b-8234-50b6da842dce" />
 
-
 ### 4. Mengecek File Zona pada TEDD
 
 Salinan zona yang diterima TEDD juga dapat dilihat pada directory slave:
 
 ```sh
- ls -lh /var/bind/slave/k28.com
+ls -lh /var/bind/slave/k28.com
 ```
 
 File `k28.com` terdapat pada directory tersebut, sehingga TEDD memiliki salinan zona dari PRAB.
@@ -1148,14 +1441,35 @@ Berdasarkan hasil pengujian, proses **zone transfer dari PRAB ke TEDD berhasil d
 
 ### 1. Script PRAB
 
-Pada **PRAB**, script `soal6_prab.sh` digunakan untuk membuat reverse zone sebagai master dan mengizinkan zone transfer ke TEDD.
+Pada **PRAB**, script `soal6_prab.sh` digunakan untuk membuat reverse zone sebagai master dan mengizinkan zone transfer ke TEDD. Script dibuat aman untuk dijalankan kembali dengan menghapus konfigurasi reverse zone lama terlebih dahulu sehingga tidak terjadi duplikasi konfigurasi.
 
 ```sh
-prab:~# cat > /root/soal6_prab.sh <<'EOT'
+'EOT'
 #!/bin/sh
 
 CONF="/etc/bind/named.conf"
+BACKUP="/etc/bind/named.conf.soal6.bak"
 
+echo "=== SOAL 6 - KONFIGURASI PRAB ==="
+
+echo "[1] CEK FILE ZONE"
+for ZONE in 3.225.192.in-addr.arpa 4.225.192.in-addr.arpa 5.225.192.in-addr.arpa
+do
+    if [ ! -f "/var/bind/$ZONE" ]; then
+        echo "File zone /var/bind/$ZONE tidak ditemukan"
+        exit 1
+    fi
+done
+
+echo "[2] BACKUP KONFIGURASI"
+cp "$CONF" "$BACKUP"
+
+echo "[3] HAPUS KONFIGURASI REVERSE ZONE LAMA"
+sed -i '/zone "3\.225\.192\.in-addr\.arpa" IN {/,/^};/d' "$CONF"
+sed -i '/zone "4\.225\.192\.in-addr\.arpa" IN {/,/^};/d' "$CONF"
+sed -i '/zone "5\.225\.192\.in-addr\.arpa" IN {/,/^};/d' "$CONF"
+
+echo "[4] TAMBAHKAN REVERSE ZONE"
 cat >> "$CONF" <<'EOT2'
 
 zone "3.225.192.in-addr.arpa" IN {
@@ -1183,37 +1497,72 @@ zone "5.225.192.in-addr.arpa" IN {
 };
 EOT2
 
-named-checkconf "$CONF" || exit 1
+echo "[5] CEK KONFIGURASI"
+if ! named-checkconf "$CONF"; then
+    echo "named-checkconf ERROR"
+    cp "$BACKUP" "$CONF"
+    exit 1
+fi
+
+echo "[6] CEK ZONE"
 named-checkzone 3.225.192.in-addr.arpa /var/bind/3.225.192.in-addr.arpa || exit 1
 named-checkzone 4.225.192.in-addr.arpa /var/bind/4.225.192.in-addr.arpa || exit 1
 named-checkzone 5.225.192.in-addr.arpa /var/bind/5.225.192.in-addr.arpa || exit 1
 
+echo "[7] RESTART NAMED"
 pkill named 2>/dev/null
 sleep 1
 named -u named
+sleep 2
+
+echo "[8] CEK SERIAL REVERSE ZONE"
+for ZONE in 3.225.192.in-addr.arpa 4.225.192.in-addr.arpa 5.225.192.in-addr.arpa
+do
+    SERIAL=$(dig @192.225.5.2 "$ZONE" SOA +short | awk '{print $3}')
+    echo "$ZONE : PRAB=$SERIAL"
+done
+
+echo "=== SOAL 6 PRAB SELESAI ==="
 EOT
 ```
 
 ### Cara menjalankan PRAB
 
 ```sh
-prab:~# chmod +x /root/soal6_prab.sh
-prab:~# /root/soal6_prab.sh
+chmod +x /root/soal6_prab.sh
+ /root/soal6_prab.sh
 ```
-
----
 
 ### 2. Script TEDD
 
-Pada **TEDD**, script `soal6_tedd.sh` digunakan untuk membuat reverse zone sebagai slave dan mengecek kesamaan serial dengan PRAB.
+Pada **TEDD**, script `soal6_tedd.sh` digunakan untuk membuat reverse zone sebagai slave dan mengecek kesamaan serial dengan PRAB. Script juga menghindari penambahan konfigurasi zone yang sama secara berulang.
 
 ```sh
-tedd:~# cat > /root/soal6_tedd.sh <<'EOT'
+'EOT'
 #!/bin/sh
 
 CONF="/etc/bind/named.conf"
+BACKUP="/etc/bind/named.conf.soal6.bak"
 PRAB="192.225.5.2"
+TEDD="192.225.5.3"
 
+echo "=== SOAL 6 - KONFIGURASI TEDD ==="
+
+echo "[1] PERSIAPAN DIRECTORY"
+mkdir -p /var/bind/slave
+mkdir -p /var/run/named
+chown named:named /var/bind/slave
+chown named:named /var/run/named
+
+echo "[2] BACKUP KONFIGURASI"
+cp "$CONF" "$BACKUP"
+
+echo "[3] HAPUS KONFIGURASI REVERSE ZONE LAMA"
+sed -i '/zone "3\.225\.192\.in-addr\.arpa" IN {/,/^};/d' "$CONF"
+sed -i '/zone "4\.225\.192\.in-addr\.arpa" IN {/,/^};/d' "$CONF"
+sed -i '/zone "5\.225\.192\.in-addr\.arpa" IN {/,/^};/d' "$CONF"
+
+echo "[4] TAMBAHKAN REVERSE ZONE SLAVE"
 cat >> "$CONF" <<EOT2
 
 zone "3.225.192.in-addr.arpa" IN {
@@ -1235,32 +1584,80 @@ zone "5.225.192.in-addr.arpa" IN {
 };
 EOT2
 
-mkdir -p /var/bind/slave /var/run/named
-chown named:named /var/bind/slave /var/run/named
+echo "[5] CEK KONFIGURASI"
+if ! named-checkconf "$CONF"; then
+    echo "named-checkconf ERROR"
+    cp "$BACKUP" "$CONF"
+    exit 1
+fi
 
-named-checkconf "$CONF" || exit 1
-
+echo "[6] RESTART NAMED"
 pkill named 2>/dev/null
 sleep 1
 named -u named
-sleep 5
 
-for z in k28.com 3.225.192.in-addr.arpa 4.225.192.in-addr.arpa 5.225.192.in-addr.arpa
+echo "[7] MENUNGGU ZONE TRANSFER"
+sleep 2
+
+echo "[8] CEK SERIAL"
+
+for i in 1 2 3 4 5
 do
-    P=$(dig @192.225.5.2 "$z" SOA +short | awk '{print $3}')
-    T=$(dig @192.225.5.3 "$z" SOA +short | awk '{print $3}')
-    echo "$z: PRAB=$P TEDD=$T"
+    SEMUA_SAMA=1
+
+    echo "Percobaan $i"
+
+    for ZONE in k28.com 3.225.192.in-addr.arpa 4.225.192.in-addr.arpa 5.225.192.in-addr.arpa
+    do
+        P=$(dig @$PRAB "$ZONE" SOA +short | awk '{print $3}')
+        T=$(dig @$TEDD "$ZONE" SOA +short | awk '{print $3}')
+
+        echo "$ZONE : PRAB=$P TEDD=$T"
+
+        if [ -z "$P" ] || [ -z "$T" ] || [ "$P" != "$T" ]; then
+            SEMUA_SAMA=0
+        fi
+    done
+
+    if [ "$SEMUA_SAMA" -eq 1 ]; then
+        echo
+        echo "Semua serial SOA sama."
+        echo "Zone transfer berhasil."
+        break
+    fi
+
+    if [ "$i" -lt 5 ]; then
+        echo "Zone transfer belum selesai, menunggu..."
+        sleep 2
+    fi
 done
+
+if [ "$SEMUA_SAMA" -ne 1 ]; then
+    echo
+    echo "Zone transfer belum berhasil."
+    exit 1
+fi
+
+echo
+echo "[9] CEK FILE SLAVE"
+ls -lh /var/bind/slave/
+
+echo
+echo "[10] CEK RECORD HASIL TRANSFER"
+dig @$TEDD abbey.k28.com +short
+dig @$TEDD molly.k28.com +short
+
+echo
+echo "=== SOAL 6 TEDD SELESAI ==="
 EOT
 ```
 
 ### Cara menjalankan TEDD
 
 ```sh
-tedd:~# chmod +x /root/soal6_tedd.sh
-tedd:~# /root/soal6_tedd.sh
+chmod +x /root/soal6_tedd.sh
+root/soal6_tedd.sh
 ```
-
 ### Hasil yang dicari
 
 ```text
@@ -1273,27 +1670,28 @@ Nilainya harus **sama**. Jika sama berarti **zone transfer berhasil**.
 ## Soal 7: Web Server Statis dan Dinamis pada DNS
 
 ### Tujuan
+
 Menambahkan record pada zona `k28.com` untuk mengelompokkan node berdasarkan peran, lalu memverifikasi dari dua klien bahwa hasil resolve konsisten.
 
 ### Pembagian Peran
 
-| Node | IP | Peran |
-|------|----|-------|
-| abbey | 192.225.4.2 | Gerbang utama |
-| penny | 192.225.3.3 | Gerbang utama |
-| obladi | 192.225.5.4 | Web statis (area vault) |
+| Node    | IP          | Peran                   |
+| ------- | ----------- | ----------------------- |
+| abbey   | 192.225.4.2 | Gerbang utama           |
+| penny   | 192.225.3.3 | Gerbang utama           |
+| obladi  | 192.225.5.4 | Web statis (area vault) |
 | desmond | 192.225.5.5 | Web statis (area vault) |
-| oblada | 192.225.5.6 | Web dinamis (area core) |
-| molly | 192.225.5.7 | Web dinamis (area core) |
+| oblada  | 192.225.5.6 | Web dinamis (area core) |
+| molly   | 192.225.5.7 | Web dinamis (area core) |
 
 ### Record yang Ditambahkan
 
-| Nama | Tipe | Tujuan |
-|------|------|--------|
-| vault.k28.com | A | 192.225.5.4 dan 192.225.5.5 (obladi, desmond) |
-| core.k28.com | A | 192.225.5.6 dan 192.225.5.7 (oblada, molly) |
-| www.k28.com | CNAME | penny.k28.com. |
-| static.k28.com | CNAME | abbey.k28.com. |
+| Nama                              | Tipe  | Tujuan                                        |
+| --------------------------------- | ----- | --------------------------------------------- |
+| vault.k28.com                     | A     | 192.225.5.4 dan 192.225.5.5 (obladi, desmond) |
+| core.k28.com                      | A     | 192.225.5.6 dan 192.225.5.7 (oblada, molly)   |
+| [www.k28.com](http://www.k28.com) | CNAME | penny.k28.com.                                |
+| static.k28.com                    | CNAME | abbey.k28.com.                                |
 
 ### Langkah Pengerjaan (Step by Step)
 
@@ -1302,9 +1700,6 @@ Menambahkan record pada zona `k28.com` untuk mengelompokkan node berdasarkan per
 ```sh
 cat /var/bind/k28.com
 ```
-
-<!-- SS: zona sebelum ada vault/core/www/static -->
-<img width="959" height="151" alt="image" src="https://github.com/user-attachments/assets/92ee95e1-9e63-4473-97bc-17f75a7a6d55" />
 
 **2. Tambahkan record (prab)**
 
@@ -1322,20 +1717,32 @@ EOF
 **3. Naikkan serial (prab)**
 
 ```sh
-sed -i "s/[0-9]\{10\}\( *; Serial\)/$(date +%s)\1/" /var/bind/k28.com
+CURRENT=$(awk '/; Serial/ {print $1; exit}' /var/bind/k28.com)
+NEW=$(date +%s)
+
+if [ "$NEW" -le "$CURRENT" ]; then
+    NEW=$((CURRENT + 1))
+fi
+
+sed -i "s/[0-9]\{10\}\( *; Serial\)/$NEW\1/" /var/bind/k28.com
 ```
+
+Perintah tersebut memastikan nilai serial baru lebih besar dari serial sebelumnya sehingga TEDD mengetahui bahwa terdapat perubahan pada zona.
 
 **4. Cek zona lalu muat ulang named (prab)**
 
 ```sh
 named-checkzone k28.com /var/bind/k28.com
-pkill named
-sleep 1
-named -u named
 ```
 
-<!-- SS: named-checkzone OK -->
-<img width="959" height="49" alt="image" src="https://github.com/user-attachments/assets/30455a02-3b96-4dff-abb2-ef5f4c0ddef2" />
+Jika hasilnya `OK`, lanjutkan:
+
+```sh
+pkill named 2>/dev/null
+sleep 1
+named -u named
+sleep 2
+```
 
 **5. Cek isi zona setelah diubah (prab)**
 
@@ -1343,47 +1750,99 @@ named -u named
 grep -E "^(vault|core|www|static)" /var/bind/k28.com
 ```
 
-**6. Tes resolve dari prab**
+Hasil yang dicari:
+
+```text
+vault   IN  A      192.225.5.4
+vault   IN  A      192.225.5.5
+core    IN  A      192.225.5.6
+core    IN  A      192.225.5.7
+www     IN  CNAME  penny.k28.com.
+static  IN  CNAME  abbey.k28.com.
+```
+
+**6. Tes resolve dari PRAB**
 
 ```sh
 for h in vault core www static; do
-    echo "$h:"; dig @192.225.5.2 $h.k28.com +short
+    echo "$h:"
+    dig @192.225.5.2 $h.k28.com +short
 done
 ```
 
-<!-- SS: hasil dig di prab -->
-<img width="959" height="398" alt="image" src="https://github.com/user-attachments/assets/13e3a4e1-4f85-435d-b2bb-2981cfb43a17" />
+Hasil yang diharapkan:
+
+```text
+vault:
+192.225.5.4
+192.225.5.5
+
+core:
+192.225.5.6
+192.225.5.7
+
+www:
+penny.k28.com.
+192.225.3.3
+
+static:
+abbey.k28.com.
+192.225.4.2
+```
 
 **7. Verifikasi dari klien pertama (alpha)**
 
-Kalau `dig` belum ada: `apk add bind-tools`
+Jika `dig` belum tersedia:
+
+```sh
+apk add bind-tools
+```
+
+Kemudian:
 
 ```sh
 for h in vault core www static; do
-    echo "$h:"; dig @192.225.5.2 $h.k28.com +short
+    echo "$h:"
+    dig @192.225.5.2 $h.k28.com +short
 done
 ```
-
-<img width="959" height="323" alt="image" src="https://github.com/user-attachments/assets/fa22450d-9eb7-450d-8b8c-29d5668131d7" />
 
 **8. Verifikasi dari klien kedua (delta)**
 
-Perintah sama seperti langkah 7.
-
-<!-- SS: terminal delta, prompt delta:~# terlihat -->
-<img width="959" height="326" alt="image" src="https://github.com/user-attachments/assets/f4fca44f-830f-4624-aa4b-5b5b182a4fa9" />
-
-**9. Cek sinkronisasi ke tedd**
+Perintah sama seperti langkah 7:
 
 ```sh
-dig @192.225.5.3 k28.com SOA +short
 for h in vault core www static; do
-    echo "$h:"; dig @192.225.5.3 $h.k28.com +short
+    echo "$h:"
+    dig @192.225.5.2 $h.k28.com +short
 done
 ```
 
-Kalau tedd masih menjawab data lama: `pkill named; rm -f /var/bind/slave/k28.com; named -u named; sleep 4`, lalu ulangi.
+Hasil dari **ALPHA dan DELTA harus menunjukkan tujuan yang sama**.
 
+**9. Cek sinkronisasi ke TEDD**
+
+```sh
+dig @192.225.5.3 k28.com SOA +short
+
+for h in vault core www static; do
+    echo "$h:"
+    dig @192.225.5.3 $h.k28.com +short
+done
+```
+
+Serial SOA pada TEDD harus sama dengan serial pada PRAB.
+
+Jika TEDD masih menjawab data lama, dapat dilakukan sinkronisasi ulang:
+
+```sh
+pkill named 2>/dev/null
+rm -f /var/bind/slave/k28.com
+named -u named
+sleep 5
+```
+
+Kemudian ulangi pengecekan pada langkah 9.
 
 ### Versi Otomatis (Script)
 
@@ -1392,6 +1851,7 @@ Kalau tedd masih menjawab data lama: `pkill named; rm -f /var/bind/slave/k28.com
 ```sh
 cat > /root/soal7_prab.sh <<'EOT'
 #!/bin/sh
+
 echo "=== Soal 7: vault, core, CNAME ==="
 
 ZONA="/var/bind/k28.com"
@@ -1401,11 +1861,16 @@ if [ ! -f "$ZONA" ]; then
     exit 1
 fi
 
-for h in vault core www static; do
-    sed -i "/^$h[[:space:]]/d" $ZONA
+echo "[1] Hapus record soal 7 lama agar tidak duplikat"
+
+for h in vault core www static
+do
+    sed -i "/^$h[[:space:]]/d" "$ZONA"
 done
 
-cat >> $ZONA <<'EOF'
+echo "[2] Tambahkan record"
+
+cat >> "$ZONA" <<'EOF'
 vault   IN  A      192.225.5.4
 vault   IN  A      192.225.5.5
 core    IN  A      192.225.5.6
@@ -1414,82 +1879,123 @@ www     IN  CNAME  penny.k28.com.
 static  IN  CNAME  abbey.k28.com.
 EOF
 
-sed -i "s/[0-9]\{10\}\( *; Serial\)/$(date +%s)\1/" $ZONA
+echo "[3] Naikkan serial"
 
-named-checkzone k28.com $ZONA || exit 1
+CURRENT=$(awk '/; Serial/ {print $1; exit}' "$ZONA")
+NEW=$(date +%s)
+
+if [ "$NEW" -le "$CURRENT" ]; then
+    NEW=$((CURRENT + 1))
+fi
+
+sed -i "s/[0-9]\{10\}\( *; Serial\)/$NEW\1/" "$ZONA"
+
+echo "[4] Cek zone"
+
+named-checkzone k28.com "$ZONA" || exit 1
+
+echo "[5] Restart named"
+
 pkill named 2>/dev/null
 sleep 1
 named -u named
 sleep 2
 
-for h in vault core www static; do
+echo "[6] Cek record"
+
+for h in vault core www static
+do
     echo "$h:"
-    dig @192.225.5.2 $h.k28.com +short
+    dig @192.225.5.2 "$h.k28.com" +short
 done
+
+echo
 echo "=== Isi zona ==="
-grep -E "^(vault|core|www|static)" $ZONA
+grep -E "^(vault|core|www|static)" "$ZONA"
+
+echo
 echo "=== Serial SOA ==="
 dig @192.225.5.2 k28.com SOA +short
+
+echo
 echo "=== Selesai ==="
 EOT
+
 chmod +x /root/soal7_prab.sh
 /root/soal7_prab.sh
 ```
+
+Script tersebut aman jika dijalankan ulang karena record `vault`, `core`, `www`, dan `static` dihapus terlebih dahulu sebelum dibuat kembali.
 
 `soal7_cek.sh` (di alpha, delta, dan tedd):
 
 ```sh
 cat > /root/soal7_cek.sh <<'EOT'
 #!/bin/sh
+
 echo "=== Cek soal 7 dari $(hostname) ==="
-for s in 192.225.5.2 192.225.5.3; do
-    echo "--- server $s ---"
-    dig @$s k28.com SOA +short
-    for h in vault core www static; do
+
+for s in 192.225.5.2 192.225.5.3
+do
+    echo
+    echo "--- DNS Server $s ---"
+
+    echo "Serial SOA:"
+    dig @"$s" k28.com SOA +short
+
+    for h in vault core www static
+    do
         echo "$h:"
-        dig @$s $h.k28.com +short
+        dig @"$s" "$h.k28.com" +short
     done
 done
+
+echo
 echo "=== Selesai ==="
 EOT
+
 chmod +x /root/soal7_cek.sh
 /root/soal7_cek.sh
 ```
-## jalankan perintah berikut:
+
+## Jalankan perintah berikut:
 
 Menambahkan record `vault`, `core`, `www`, dan `static` pada PRAB lalu memastikan record dapat diakses dari client dan TEDD.
 
 ### 1. PRAB
 
 ```sh
-prab:~# chmod +x /root/soal7_prab.sh
-prab:~# /root/soal7_prab.sh
+chmod +x /root/soal7_prab.sh
+ /root/soal7_prab.sh
 ```
 
-Script menambahkan record baru ke zona `k28.com` dan mengecek hasilnya.
+Script menambahkan record baru ke zona `k28.com`, menaikkan serial, mengecek zona, kemudian menjalankan kembali `named`.
 
 ### 2. ALPHA
 
 ```sh
-alpha:~# chmod +x /root/soal7_cek.sh
-alpha:~# /root/soal7_cek.sh
+chmod +x /root/soal7_cek.sh
+/root/soal7_cek.sh
 ```
- Mengecek apakah record dari PRAB dapat di-resolve dari ALPHA.
+
+Mengecek apakah record dari PRAB dapat di-resolve dari ALPHA.
 
 ### 3. DELTA
 
 ```sh
-delta:~# chmod +x /root/soal7_cek.sh
-delta:~# /root/soal7_cek.sh
+chmod +x /root/soal7_cek.sh
+ /root/soal7_cek.sh
 ```
- Mengecek resolusi record dari client kedua, yaitu DELTA.
+
+Mengecek resolusi record dari client kedua, yaitu DELTA.
 
 ### 4. TEDD
 
 ```sh
-tedd:~# chmod +x /root/soal7_cek.sh
-tedd:~# /root/soal7_cek.sh
+ chmod +x /root/soal7_cek.sh
+ /root/soal7_cek.sh
 ```
+
 Memastikan TEDD sebagai DNS slave sudah menerima record terbaru dari PRAB.
 
 ### Hasil yang diharapkan
@@ -1497,44 +2003,60 @@ Memastikan TEDD sebagai DNS slave sudah menerima record terbaru dari PRAB.
 ```text
 vault  → 192.225.5.4
 vault  → 192.225.5.5
+
 core   → 192.225.5.6
 core   → 192.225.5.7
-www    → penny.k28.com.
-static → abbey.k28.com.
-```
 
+www    → penny.k28.com.
+         192.225.3.3
+
+static → abbey.k28.com.
+         192.225.4.2
+```
 ---
+
 ## Soal 8: Reverse Zone dan PTR (Master prab, Slave tedd)
 
 ### Tujuan
+
 Mendeklarasikan reverse zone di prab (ns1) untuk segmen tempat abbey, penny, vault, dan core berada, menariknya sebagai slave di tedd (ns2), mengisi PTR, lalu memastikan query reverse dijawab authoritative.
 
 ### Pembagian Zona
 
-| Segmen | Zona reverse | Isi |
-|--------|--------------|-----|
-| 192.225.3.0/24 | `3.225.192.in-addr.arpa` | penny (3.3) |
-| 192.225.4.0/24 | `4.225.192.in-addr.arpa` | abbey (4.2) |
+| Segmen         | Zona reverse             | Isi                               |
+| -------------- | ------------------------ | --------------------------------- |
+| 192.225.3.0/24 | `3.225.192.in-addr.arpa` | penny (3.3)                       |
+| 192.225.4.0/24 | `4.225.192.in-addr.arpa` | abbey (4.2)                       |
 | 192.225.5.0/24 | `5.225.192.in-addr.arpa` | vault (5.4, 5.5), core (5.6, 5.7) |
 
 ### Record PTR
 
-| IP | PTR |
-|----|-----|
+| IP          | PTR            |
+| ----------- | -------------- |
 | 192.225.3.3 | penny.k28.com. |
 | 192.225.4.2 | abbey.k28.com. |
 | 192.225.5.4 | vault.k28.com. |
 | 192.225.5.5 | vault.k28.com. |
-| 192.225.5.6 | core.k28.com. |
-| 192.225.5.7 | core.k28.com. |
+| 192.225.5.6 | core.k28.com.  |
+| 192.225.5.7 | core.k28.com.  |
 
-### Langkah Pengerjaan 
+### Langkah Pengerjaan
 
 #### Di prab (master)
 
 **1. Deklarasikan tiga zona di named.conf**
 
-```sh
+Karena zona reverse sudah dibuat pada Soal 6, sebelum menambahkan konfigurasi dilakukan pengecekan terlebih dahulu.
+
+```sh id="7j9v1b"
+grep -n 'zone "3.225.192.in-addr.arpa"\|zone "4.225.192.in-addr.arpa"\|zone "5.225.192.in-addr.arpa"' /etc/bind/named.conf
+```
+
+Jika ketiga zona sudah muncul, **tidak perlu menambahkannya lagi**.
+
+Jika belum ada, gunakan:
+
+```sh id="jj4r9f"
 cat >> /etc/bind/named.conf <<'EOF'
 
 zone "3.225.192.in-addr.arpa" IN {
@@ -1561,12 +2083,11 @@ zone "5.225.192.in-addr.arpa" IN {
     allow-transfer { 192.225.5.3; };
 };
 EOF
-tail -40 /etc/bind/named.conf
 ```
 
 **2. Buat tiga file zona reverse**
 
-```sh
+```sh id="0f3gpf"
 cat > /var/bind/3.225.192.in-addr.arpa <<'EOF'
 $TTL 604800
 @   IN  SOA prab.k28.com. root.k28.com. (
@@ -1617,37 +2138,62 @@ cat /var/bind/4.225.192.in-addr.arpa
 cat /var/bind/5.225.192.in-addr.arpa
 ```
 
-<!-- SS: isi tiga file zona reverse -->
-![File zona reverse](img/soal8-zona-reverse.png)
+Ketiga file tersebut berisi PTR untuk `penny`, `abbey`, `vault`, dan `core`.
 
 **3. Cek konfigurasi dan zona, lalu jalankan ulang named**
 
-```sh
+```sh id="b8cg7e"
 named-checkconf /etc/bind/named.conf
+
 named-checkzone 3.225.192.in-addr.arpa /var/bind/3.225.192.in-addr.arpa
+
 named-checkzone 4.225.192.in-addr.arpa /var/bind/4.225.192.in-addr.arpa
+
 named-checkzone 5.225.192.in-addr.arpa /var/bind/5.225.192.in-addr.arpa
-pkill named; sleep 1; named -u named
 ```
 
-<!-- SS: named-checkconf diam, tiga OK -->
-![Cek zona](img/soal8-checkzone.png)
+Jika semuanya `OK`, jalankan:
+
+```sh id="p6x1yo"
+pkill named 2>/dev/null
+sleep 1
+named -u named
+sleep 2
+```
 
 **4. Tes reverse dari prab**
 
-```sh
+```sh id="8j7b1w"
+dig @192.225.5.2 -x 192.225.3.3 +short
 dig @192.225.5.2 -x 192.225.4.2 +short
+dig @192.225.5.2 -x 192.225.5.4 +short
 dig @192.225.5.2 -x 192.225.5.6 +short
 ```
 
-<!-- SS: abbey.k28.com. dan core.k28.com. -->
-![Reverse prab](img/soal8-dig-prab.png)
+Hasil yang diharapkan:
+
+```text
+penny.k28.com.
+abbey.k28.com.
+vault.k28.com.
+core.k28.com.
+```
 
 #### Di tedd (slave)
 
 **5. Deklarasikan zona sebagai slave**
 
-```sh
+Karena reverse zone juga sudah dideklarasikan pada Soal 6, cek terlebih dahulu:
+
+```sh id="e6e5ac"
+grep -n 'zone "3.225.192.in-addr.arpa"\|zone "4.225.192.in-addr.arpa"\|zone "5.225.192.in-addr.arpa"' /etc/bind/named.conf
+```
+
+Jika ketiga zona sudah ada, **tidak perlu ditambahkan lagi**.
+
+Jika belum ada, gunakan:
+
+```sh id="yr6kzi"
 cat >> /etc/bind/named.conf <<'EOF'
 
 zone "3.225.192.in-addr.arpa" IN {
@@ -1668,71 +2214,113 @@ zone "5.225.192.in-addr.arpa" IN {
     file "/var/bind/slave/5.225.192.in-addr.arpa";
 };
 EOF
-named-checkconf /etc/bind/named.conf
-pkill named; sleep 1; named -u named
-sleep 3
-tail -30 /etc/bind/named.conf
-ls /var/bind/slave
 ```
 
-Hasil yang benar: `ls` menampilkan empat file (`k28.com` dan tiga zona reverse).
+Kemudian:
 
-<!-- SS: deklarasi slave dan empat file -->
-![Slave tedd](img/soal8-slave-tedd.png)
+```sh id="o4q1fj"
+mkdir -p /var/bind/slave /var/run/named
+chown named:named /var/bind/slave /var/run/named
+
+named-checkconf /etc/bind/named.conf
+```
+
+Jika `named-checkconf` tidak menampilkan error:
+
+```sh id="8a7r1k"
+pkill named 2>/dev/null
+sleep 1
+named -u named
+sleep 5
+
+ls -lh /var/bind/slave/
+```
+
+Hasil yang dicari adalah tiga file reverse zone:
+
+```text
+3.225.192.in-addr.arpa
+4.225.192.in-addr.arpa
+5.225.192.in-addr.arpa
+```
+
+File `k28.com` juga tetap boleh ada karena merupakan hasil dari Soal 4.
 
 #### Verifikasi authoritative
 
 **6. Query ke tedd**
 
-```sh
-for ip in 192.225.3.3 192.225.4.2 192.225.5.4 192.225.5.6; do
-    dig @192.225.5.3 -x $ip +noall +comments +answer | grep -E "^;; flags|PTR"
+Untuk memastikan TEDD menjawab secara authoritative, digunakan flag `aa` pada hasil query:
+
+```sh id="v6m20w"
+for ip in 192.225.3.3 192.225.4.2 192.225.5.4 192.225.5.6
+do
+    echo "=== $ip ==="
+    dig @192.225.5.3 -x $ip +noall +comments +answer
 done
 ```
 
-<!-- SS: flag aa dan PTR benar dari tedd -->
-![Authoritative tedd](img/soal8-aa-tedd.png)
+Pada bagian `flags`, hasil harus mengandung:
+
+```text
+aa
+```
+
+`aa` menunjukkan bahwa jawaban diberikan secara authoritative oleh DNS server tersebut.
 
 **7. Query ke prab**
 
-```sh
-for ip in 192.225.3.3 192.225.4.2 192.225.5.4 192.225.5.6; do
-    dig @192.225.5.2 -x $ip +noall +comments +answer | grep -E "^;; flags|PTR"
+```sh id="0n1l3h"
+for ip in 192.225.3.3 192.225.4.2 192.225.5.4 192.225.5.6
+do
+    echo "=== $ip ==="
+    dig @192.225.5.2 -x $ip +noall +comments +answer
 done
 ```
 
-<!-- SS: flag aa dan PTR benar dari prab -->
-![Authoritative prab](img/soal8-aa-prab.png)
+Hasil harus menunjukkan flag `aa` dan PTR yang sesuai.
 
 **8. Cek sinkronisasi serial**
 
-```sh
-for z in 3 4 5; do
+```sh id="l1y0zi"
+for z in 3 4 5
+do
+    echo "=== $z.225.192.in-addr.arpa ==="
+    echo "PRAB:"
     dig @192.225.5.2 $z.225.192.in-addr.arpa SOA +short
+
+    echo "TEDD:"
     dig @192.225.5.3 $z.225.192.in-addr.arpa SOA +short
 done
 ```
 
-<!-- SS: serial sama di keenam baris -->
-![Sinkronisasi serial](img/soal8-serial.png)
+Serial pada masing-masing reverse zone di PRAB dan TEDD harus sama.
 
 ### Versi Otomatis (Script)
 
-Script aman dijalankan ulang: deklarasi zona hanya ditambah kalau belum ada, dan serial memakai `date +%s`.
+Script dibuat aman dijalankan ulang. Jika deklarasi zona sudah ada dari Soal 6, script tidak menambahkannya lagi.
 
 **`soal8_prab.sh` (prab)**
 
-```sh
+```sh id="4m4p1v"
 cat > /root/soal8_prab.sh <<'EOT'
 #!/bin/sh
+
 echo "=== Soal 8: reverse zone (prab) ==="
 
 CONF="/etc/bind/named.conf"
 SERIAL=$(date +%s)
 
-for z in 3.225.192.in-addr.arpa 4.225.192.in-addr.arpa 5.225.192.in-addr.arpa; do
-    if ! grep -q "zone \"$z\"" $CONF; then
-        cat >> $CONF <<EOF
+echo "[1] Cek deklarasi reverse zone"
+
+for z in 3.225.192.in-addr.arpa 4.225.192.in-addr.arpa 5.225.192.in-addr.arpa
+do
+    if grep -q "zone \"$z\"" "$CONF"; then
+        echo "$z sudah ada"
+    else
+        echo "$z belum ada, menambahkan..."
+
+        cat >> "$CONF" <<EOF
 
 zone "$z" IN {
     type master;
@@ -1745,65 +2333,124 @@ EOF
     fi
 done
 
-mkzone() {
-    # $1 = zona, $2 = isi PTR
-    cat > /var/bind/$1 <<EOF
+echo "[2] Membuat file reverse zone"
+
+cat > /var/bind/3.225.192.in-addr.arpa <<EOF
 \$TTL 604800
 @   IN  SOA prab.k28.com. root.k28.com. (
             $SERIAL  ; Serial
-            604800      ; Refresh
-            86400       ; Retry
-            2419200     ; Expire
-            604800 )    ; Negative Cache TTL
+            604800
+            86400
+            2419200
+            604800 )
 ;
 @   IN  NS  prab.k28.com.
 @   IN  NS  tedd.k28.com.
-$2
+3   IN  PTR penny.k28.com.
 EOF
-}
 
-mkzone 3.225.192.in-addr.arpa "3   IN  PTR penny.k28.com."
-mkzone 4.225.192.in-addr.arpa "2   IN  PTR abbey.k28.com."
-mkzone 5.225.192.in-addr.arpa "4   IN  PTR vault.k28.com.
+cat > /var/bind/4.225.192.in-addr.arpa <<EOF
+\$TTL 604800
+@   IN  SOA prab.k28.com. root.k28.com. (
+            $SERIAL  ; Serial
+            604800
+            86400
+            2419200
+            604800 )
+;
+@   IN  NS  prab.k28.com.
+@   IN  NS  tedd.k28.com.
+2   IN  PTR abbey.k28.com.
+EOF
+
+cat > /var/bind/5.225.192.in-addr.arpa <<EOF
+\$TTL 604800
+@   IN  SOA prab.k28.com. root.k28.com. (
+            $SERIAL  ; Serial
+            604800
+            86400
+            2419200
+            604800 )
+;
+@   IN  NS  prab.k28.com.
+@   IN  NS  tedd.k28.com.
+4   IN  PTR vault.k28.com.
 5   IN  PTR vault.k28.com.
 6   IN  PTR core.k28.com.
-7   IN  PTR core.k28.com."
+7   IN  PTR core.k28.com.
+EOF
 
-echo "=== Cek konfigurasi ==="
-named-checkconf $CONF || exit 1
-for z in 3 4 5; do
-    named-checkzone $z.225.192.in-addr.arpa /var/bind/$z.225.192.in-addr.arpa || exit 1
-done
+echo "[3] Cek konfigurasi"
 
-echo "=== Muat ulang named ==="
+named-checkconf "$CONF" || exit 1
+
+named-checkzone 3.225.192.in-addr.arpa \
+    /var/bind/3.225.192.in-addr.arpa || exit 1
+
+named-checkzone 4.225.192.in-addr.arpa \
+    /var/bind/4.225.192.in-addr.arpa || exit 1
+
+named-checkzone 5.225.192.in-addr.arpa \
+    /var/bind/5.225.192.in-addr.arpa || exit 1
+
+echo "[4] Restart named"
+
 pkill named 2>/dev/null
 sleep 1
 named -u named
 sleep 2
 
-echo "=== Tes reverse di prab ==="
-for ip in 192.225.3.3 192.225.4.2 192.225.5.4 192.225.5.6; do
+echo "[5] Tes reverse"
+
+for ip in 192.225.3.3 192.225.4.2 192.225.5.4 192.225.5.6
+do
     echo -n "$ip: "
-    dig @192.225.5.2 -x $ip +short
+    dig @192.225.5.2 -x "$ip" +short
 done
-echo "=== Selesai ==="
+
+echo
+echo "=== Serial PRAB ==="
+
+for z in 3 4 5
+do
+    dig @192.225.5.2 "$z.225.192.in-addr.arpa" SOA +short
+done
+
+echo
+echo "=== SOAL 8 PRAB SELESAI ==="
 EOT
+
 chmod +x /root/soal8_prab.sh
 /root/soal8_prab.sh
 ```
 
-**`soal8_tedd.sh` (tedd, jalankan setelah prab)**
+**`soal8_tedd.sh` (tedd, jalankan setelah PRAB)**
 
-```sh
+```sh id="42p3l7"
 cat > /root/soal8_tedd.sh <<'EOT'
 #!/bin/sh
+
 echo "=== Soal 8: reverse zone (tedd) ==="
 
 CONF="/etc/bind/named.conf"
 
-for z in 3.225.192.in-addr.arpa 4.225.192.in-addr.arpa 5.225.192.in-addr.arpa; do
-    if ! grep -q "zone \"$z\"" $CONF; then
-        cat >> $CONF <<EOF
+echo "[1] Persiapan directory"
+
+mkdir -p /var/bind/slave
+mkdir -p /var/run/named
+chown named:named /var/bind/slave
+chown named:named /var/run/named
+
+echo "[2] Cek deklarasi reverse zone"
+
+for z in 3.225.192.in-addr.arpa 4.225.192.in-addr.arpa 5.225.192.in-addr.arpa
+do
+    if grep -q "zone \"$z\"" "$CONF"; then
+        echo "$z sudah ada"
+    else
+        echo "$z belum ada, menambahkan..."
+
+        cat >> "$CONF" <<EOF
 
 zone "$z" IN {
     type slave;
@@ -1814,60 +2461,99 @@ EOF
     fi
 done
 
-named-checkconf $CONF || exit 1
+echo "[3] Cek konfigurasi"
 
-# Hapus salinan lama supaya selalu menarik versi terbaru dari prab
+named-checkconf "$CONF" || exit 1
+
+echo "[4] Restart named"
+
 pkill named 2>/dev/null
 sleep 1
-rm -f /var/bind/slave/k28.com /var/bind/slave/*.in-addr.arpa
 named -u named
-sleep 4
 
-echo "=== File slave ==="
-ls /var/bind/slave
+echo "[5] Menunggu zone transfer"
 
-echo "=== Cek authoritative (harus ada aa) ==="
-for s in 192.225.5.3 192.225.5.2; do
-    echo "--- server $s ---"
-    for ip in 192.225.3.3 192.225.4.2 192.225.5.4 192.225.5.6; do
-        dig @$s -x $ip +noall +comments +answer | grep -E "^;; flags|PTR"
-    done
+sleep 5
+
+echo "[6] Cek file slave"
+
+ls -lh /var/bind/slave/
+
+echo
+echo "[7] Cek reverse query"
+
+for ip in 192.225.3.3 192.225.4.2 192.225.5.4 192.225.5.6
+do
+    echo "=== $ip ==="
+    dig @192.225.5.3 -x "$ip" +noall +comments +answer
 done
 
-echo "=== Serial SOA ==="
-for z in 3 4 5; do
-    dig @192.225.5.2 $z.225.192.in-addr.arpa SOA +short
-    dig @192.225.5.3 $z.225.192.in-addr.arpa SOA +short
+echo
+echo "[8] Cek serial"
+
+SEMUA_SAMA=1
+
+for z in 3 4 5
+do
+    ZONE="$z.225.192.in-addr.arpa"
+
+    P=$(dig @192.225.5.2 "$ZONE" SOA +short | awk '{print $3}')
+    T=$(dig @192.225.5.3 "$ZONE" SOA +short | awk '{print $3}')
+
+    echo "$ZONE : PRAB=$P TEDD=$T"
+
+    if [ -z "$P" ] || [ -z "$T" ] || [ "$P" != "$T" ]; then
+        SEMUA_SAMA=0
+    fi
 done
-echo "=== Selesai ==="
+
+echo
+
+if [ "$SEMUA_SAMA" -eq 1 ]; then
+    echo "Serial semua reverse zone sama."
+    echo "Zone transfer berhasil."
+else
+    echo "Serial belum sama."
+    echo "Zone transfer belum selesai."
+    exit 1
+fi
+
+echo
+echo "=== SOAL 8 TEDD SELESAI ==="
 EOT
+
 chmod +x /root/soal8_tedd.sh
 /root/soal8_tedd.sh
 ```
+### Urutan Menjalankan Script
 
----
-
-## Urutan Menjalankan Semua Script
-
-Setelah node direstart (named tidak menyala otomatis dan `soal4_*` menimpa `named.conf` serta zona), jalankan berurutan:
+**1. PRAB**
 
 ```sh
-# prab
-/root/soal4_prab.sh
-/root/soal5_prab.sh
-/root/soal7_prab.sh
-/root/soal8_prab.sh
+prab:~# chmod +x /root/soal8_prab.sh
+prab:~# /root/soal8_prab.sh
+```
 
-# tedd
-/root/soal4_tedd.sh
-/root/soal8_tedd.sh
+**2. TEDD**
 
-# semua node non-router
-/root/resolver_soal4.sh
-```ne hilang. Kalau terlanjur, jalankan `soal8_prab.sh` lalu `soal8_tedd.sh` untuk memasang kembali.
+```sh
+tedd:~# chmod +x /root/soal8_tedd.sh
+tedd:~# /root/soal8_tedd.sh
+```
+
+**3. Verifikasi reverse DNS pada TEDD**
+
+```sh
+tedd:~# for ip in 192.225.3.3 192.225.4.2 192.225.5.4 192.225.5.6
+do
+    dig @192.225.5.3 -x "$ip" +noall +comments +answer
+done
+```
+
+Hasil harus menunjukkan `penny.k28.com`, `abbey.k28.com`, `vault.k28.com`, dan `core.k28.com`, serta flag `aa`.
 
 ---
-#SOAL 9 — WEB STATIS APACHE DAN AUTOINDEX
+# SOAL 9 — WEB STATIS APACHE DAN AUTOINDEX
 
 ## Tujuan
 
@@ -1934,7 +2620,7 @@ Kemudian menjalankan Apache:
 ps | grep -q "[h]ttpd" && httpd -k restart || httpd
 ```
 
-Pengujian:
+Pengujian menggunakan `curl`:
 
 ```bash
 curl -s http://localhost/arsip/ | grep -E "dokumen|laporan"
@@ -1948,7 +2634,16 @@ dokumen2.txt
 laporan/
 ```
 
+Untuk melihat **seluruh directory listing**, dapat menggunakan:
+
+```bash
+curl http://localhost/arsip/
+```
+
+Hasil menampilkan daftar file dan folder di dalam `/arsip/`.
+
 **Konfigurasi dan hasil pengujian Apache pada `obladi`.**
+
 <img width="959" height="209" alt="Screenshot 2026-09-30 183515" src="https://github.com/user-attachments/assets/059f4940-4dfc-4bc8-b378-138d1af5f7b8" />
 
 ### 3. Konfigurasi Apache pada `desmond`
@@ -1986,14 +2681,19 @@ Alias /arsip /arsip
 CONF
 ```
 
-Cek konfigurasi dan jalankan Apache:
+Cek konfigurasi:
 
 ```bash
 httpd -t
+```
+
+Kemudian jalankan Apache:
+
+```bash
 ps | grep -q "[h]ttpd" && httpd -k restart || httpd
 ```
 
-Kemudian cek isi `/arsip/`:
+Pengujian menggunakan `curl`:
 
 ```bash
 curl -s http://localhost/arsip/ | grep -E "dokumen|laporan"
@@ -2007,7 +2707,14 @@ dokumen2.txt
 laporan/
 ```
 
+Untuk melihat directory listing secara lengkap:
+
+```bash
+curl http://localhost/arsip/
+```
+
 **Konfigurasi dan hasil pengujian Apache pada `desmond`.**
+
 <img width="933" height="140" alt="Screenshot 2026-09-30 183604" src="https://github.com/user-attachments/assets/a2d058cf-7769-413c-9710-eab8c22041a6" />
 
 ### 4. Pengujian Hostname dari `delta`
@@ -2029,13 +2736,27 @@ Hasil:
 192.225.5.5
 ```
 
-Selanjutnya dilakukan pengujian web menggunakan hostname:
+Selanjutnya dilakukan pengujian web menggunakan hostname.
+
+#### Opsi 1 — Menggunakan `curl`
+
+Jika `curl` belum tersedia:
+
+```bash
+apk add curl
+```
+
+Kemudian:
 
 ```bash
 curl -s http://obladi.k28.com/arsip/ | grep -E "dokumen|laporan"
+```
 
+```bash
 curl -s http://desmond.k28.com/arsip/ | grep -E "dokumen|laporan"
+```
 
+```bash
 curl -s http://vault.k28.com/arsip/ | grep -E "dokumen|laporan"
 ```
 
@@ -2047,12 +2768,64 @@ dokumen2.txt
 laporan/
 ```
 
+Untuk melihat seluruh isi directory listing:
+
+```bash
+curl http://vault.k28.com/arsip/
+```
+
+Hasil:
+
+```text
+Index of /arsip
+
+dokumen1.txt
+dokumen2.txt
+laporan/
+server.txt
+```
+
+#### Opsi 2 — Menggunakan `lynx`
+
+Install `lynx` pada `delta`:
+
+```bash
+apk add lynx
+```
+
+Kemudian akses menggunakan hostname:
+
+```bash
+lynx http://vault.k28.com/arsip/
+```
+
+Browser teks `lynx` akan menampilkan halaman directory listing Apache. File dan folder di dalam `/arsip/` dapat dipilih dan dibuka melalui terminal.
+
+Untuk menguji hostname secara langsung pada masing-masing server:
+
+```bash
+lynx http://obladi.k28.com/arsip/
+```
+
+```bash
+lynx http://desmond.k28.com/arsip/
+```
+
+```bash
+lynx http://vault.k28.com/arsip/
+```
+
+Dengan demikian, pengujian tetap dilakukan menggunakan **hostname**, bukan IP address.
+
 **Pengujian hostname dan directory listing dari `delta`.**
+
 <img width="950" height="300" alt="Screenshot 2026-09-30 183747" src="https://github.com/user-attachments/assets/2cfcd8e5-cb07-4a2c-b867-b0f11bf9734c" />
 
 ### 5. Pengujian Folder `laporan`
 
 Untuk memastikan subfolder juga dapat ditelusuri:
+
+#### Menggunakan `curl`
 
 ```bash
 curl -s http://vault.k28.com/arsip/laporan/ | grep "a.txt"
@@ -2064,7 +2837,7 @@ Hasil:
 a.txt
 ```
 
-Kemudian dilakukan pengujian langsung:
+Kemudian:
 
 ```bash
 curl http://vault.k28.com/arsip/
@@ -2081,19 +2854,42 @@ laporan/
 server.txt
 ```
 
+#### Menggunakan `lynx`
+
+```bash
+lynx http://vault.k28.com/arsip/
+```
+
+Kemudian pilih:
+
+```text
+laporan/
+```
+
+untuk masuk ke folder `/arsip/laporan/`.
+
+Di dalamnya terdapat:
+
+```text
+a.txt
+```
+
 **Hasil directory listing `vault.k28.com/arsip/`.**
+
 <img width="959" height="232" alt="Screenshot 2026-09-30 184638" src="https://github.com/user-attachments/assets/0833e1a7-fa31-442d-a7b2-d29fb8cc4553" />
 
 ## Kesimpulan
 
-Konfigurasi web statis menggunakan Apache berhasil dilakukan. Fitur AutoIndex pada direktori `/arsip/` juga berhasil menampilkan daftar file dan folder. Pengujian menggunakan hostname `obladi.k28.com`, `desmond.k28.com`, dan `vault.k28.com` berhasil dilakukan tanpa menggunakan IP address secara langsung.
+Konfigurasi web statis menggunakan Apache berhasil dilakukan pada node `obladi` dan `desmond`. Fitur AutoIndex pada direktori `/arsip/` juga berhasil menampilkan daftar file dan folder.
+
+Pengujian dilakukan menggunakan hostname `obladi.k28.com`, `desmond.k28.com`, dan `vault.k28.com` tanpa mengakses IP address secara langsung. Pengujian dapat dilakukan menggunakan `curl` maupun browser teks `lynx`, sehingga directory listing dapat ditampilkan dan folder `/arsip/laporan/` dapat ditelusuri.
 
 ## Versi Otomatis (Script)
 
 ### Node `obladi`
 
 ```bash
-cat > soal9_setup.sh <<'EOF'
+cat > /root/soal9_setup.sh <<'EOF'
 #!/bin/sh
 
 apk update
@@ -2134,16 +2930,18 @@ echo "=== TEST SERVER ==="
 curl -s http://localhost/arsip/server.txt
 EOF
 ```
-cara menjelankannya:
-```
-chmod +x soal9_setup.sh
-./soal9_setup.sh
+
+Cara menjalankannya:
+
+```bash
+chmod +x /root/soal9_setup.sh
+/root/soal9_setup.sh
 ```
 
 ### Node `desmond`
 
 ```bash
-cat > soal9_setup.sh <<'EOF'
+cat > /root/soal9_setup.sh <<'EOF'
 #!/bin/sh
 
 apk update
@@ -2184,28 +2982,124 @@ echo "=== TEST SERVER ==="
 curl -s http://localhost/arsip/server.txt
 EOF
 ```
-cara menjelankannya:
-```
-chmod +x soal9_setup.sh
-./soal9_setup.sh
+
+Cara menjalankannya:
+
+```bash
+chmod +x /root/soal9_setup.sh
+/root/soal9_setup.sh
 ```
 
-### Pengujian Hostname
+## Urutan Menjalankan Script
 
-Dilakukan dari node yang digunakan untuk pengujian, misalnya `delta`:
+### 1. Node `obladi`
+
+Setelah isi `soal9_setup.sh` selesai dibuat:
+
+```bash
+chmod +x /root/soal9_setup.sh
+/root/soal9_setup.sh
+```
+
+### 2. Node `desmond`
+
+Setelah isi `soal9_setup.sh` selesai dibuat:
+
+```bash
+chmod +x /root/soal9_setup.sh
+/root/soal9_setup.sh
+```
+
+### 3. Node `delta` — Pengujian DNS
+
+Pastikan `curl` tersedia:
+
+```bash
+apk add curl
+```
+
+Kemudian lakukan pengujian hostname:
+
+```bash
+dig obladi.k28.com +short
+dig desmond.k28.com +short
+dig vault.k28.com +short
+```
+
+### 4. Node `delta` — Pengujian menggunakan `curl`
+
+Pengujian dilakukan melalui hostname:
+
+```bash
+curl http://obladi.k28.com/arsip/
+```
+
+```bash
+curl http://desmond.k28.com/arsip/
+```
 
 ```bash
 curl http://vault.k28.com/arsip/
 ```
+
+Untuk pengujian yang lebih ringkas:
+
+```bash
+curl -s http://obladi.k28.com/arsip/ | grep -E "dokumen|laporan"
+```
+
+```bash
+curl -s http://desmond.k28.com/arsip/ | grep -E "dokumen|laporan"
+```
+
+```bash
+curl -s http://vault.k28.com/arsip/ | grep -E "dokumen|laporan"
+```
+
+### 5. Node `delta` — Install `lynx`
+
+```bash
+apk add lynx
+```
+
+### 6. Node `delta` — Pengujian menggunakan `lynx`
+
+```bash
+lynx http://obladi.k28.com/arsip/
+```
+
+Keluar dari `lynx`:
+
+```text
+q
+```
+
+Kemudian:
+
+```bash
+lynx http://desmond.k28.com/arsip/
+```
+
+Keluar:
+
+```text
+q
+```
+
+Kemudian:
+
+```bash
+lynx http://vault.k28.com/arsip/
+```
+
+Dari halaman tersebut dapat masuk ke folder `laporan/` untuk memastikan directory listing dapat ditelusuri.
 
 ---
 # Soal 10 – Web Dinamis PHP-FPM dengan Nginx
 
 ## Tujuan
 
-Percobaan ini bertujuan untuk menjalankan layanan web dinamis menggunakan **Nginx dan PHP-FPM** pada node **Oblada** di area core. Website dibuat sederhana dengan dua halaman, yaitu halaman beranda dan halaman profil. Selain itu, diterapkan aturan rewrite agar halaman profil dapat diakses menggunakan URL `/profil` tanpa menuliskan `.php`. Pengujian dilakukan menggunakan hostname `oblada.k28.com`.
-
----
+Percobaan ini bertujuan untuk menjalankan layanan web dinamis menggunakan **Nginx dan PHP-FPM** pada node **Oblada dan Molly** di area core. Website dibuat sederhana dengan dua halaman, yaitu halaman beranda dan halaman profil. Selain itu, diterapkan aturan rewrite agar halaman profil dapat diakses menggunakan URL `/profil` tanpa menuliskan `.php`. Pengujian dilakukan menggunakan hostname `oblada.k28.com` dan `molly.k28.com`.
 
 ## Langkah 1 – Masuk ke Node Oblada
 
@@ -2222,7 +3116,7 @@ apk update
 Masih di console **Oblada**, install Nginx dan PHP-FPM:
 
 ```sh
-apk add nginx php84 php84-fpm
+apk add nginx php84 php84-fpm curl
 ```
 
 Setelah proses selesai, Nginx dan PHP-FPM sudah tersedia untuk digunakan sebagai web server dan pemroses PHP.
@@ -2297,7 +3191,13 @@ profil.php
 
 ## Langkah 6 – Menjalankan PHP-FPM
 
-Jalankan PHP-FPM:
+Cek terlebih dahulu apakah PHP-FPM sudah berjalan:
+
+```sh
+ps | grep -q "[p]hp-fpm84"
+```
+
+Jika belum berjalan, jalankan:
 
 ```sh
 php-fpm84
@@ -2357,7 +3257,6 @@ EOF
 
 Konfigurasi tersebut membuat hostname `oblada.k28.com` menggunakan direktori `/var/www/core`. Bagian rewrite digunakan agar `/profil` diarahkan ke `profil.php`.
 
-
 ## Langkah 8 – Mengecek Konfigurasi Nginx
 
 Jalankan:
@@ -2377,13 +3276,19 @@ berarti konfigurasi Nginx berhasil.
 
 ## Langkah 9 – Menjalankan Nginx
 
-Jalankan Nginx:
+Cek terlebih dahulu apakah Nginx sudah berjalan:
+
+```sh
+ps | grep -q "[n]ginx"
+```
+
+Jika belum berjalan:
 
 ```sh
 nginx
 ```
 
-Jika Nginx sudah berjalan, gunakan:
+Jika sudah berjalan:
 
 ```sh
 nginx -s reload
@@ -2397,10 +3302,9 @@ netstat -tlnp 2>/dev/null | grep ':80'
 
 Pastikan proses yang menggunakan port 80 adalah Nginx.
 
-
 ## Langkah 10 – Pengujian Beranda pada Node Oblada
 
-Masih di console **Oblada**, lakukan pengujian menggunakan hostname:
+Masih di console **Oblada**, pengujian dilakukan menggunakan hostname dengan header Host:
 
 ```sh
 curl -s -H "Host: oblada.k28.com" http://127.0.0.1/
@@ -2420,18 +3324,55 @@ Dikelola oleh node: oblada
 Lihat Profil Kami
 ```
 
-
 ## Langkah 11 – Pengujian dari Node Delta
 
 Pengujian dari node lain dilakukan menggunakan hostname.
 
 **Console: `delta`**
 
+### Opsi 1 — Menggunakan `curl`
+
+Jika `curl` belum tersedia:
+
+```sh
+apk add curl
+```
+
+Kemudian akses halaman beranda:
+
 ```sh
 curl http://oblada.k28.com/
 ```
 
-Jika halaman beranda tampil, berarti layanan web dapat diakses menggunakan hostname.
+Untuk menguji halaman profil:
+
+```sh
+curl http://oblada.k28.com/profil
+```
+
+Jika hasil halaman profil muncul, berarti aturan rewrite `/profil` berhasil.
+
+### Opsi 2 — Menggunakan `lynx`
+
+Jika `lynx` belum tersedia:
+
+```sh
+apk add lynx
+```
+
+Kemudian akses halaman beranda:
+
+```sh
+lynx -reload http://oblada.k28.com/
+```
+
+Untuk halaman profil:
+
+```sh
+lynx -reload http://oblada.k28.com/profil
+```
+
+Pengujian tersebut menggunakan hostname `oblada.k28.com`, bukan IP address.
 
 ## Langkah 12 – Pengujian URL Bersih `/profil`
 
@@ -2460,64 +3401,185 @@ http://oblada.k28.com/profil
 
 tanpa `.php`.
 
-
-## Langkah 13 – Pengujian Menggunakan Lynx
-
-Pengujian juga dilakukan menggunakan browser teks **Lynx**.
-
-**Console: `delta`**
-
-Untuk halaman beranda:
-
-```sh
-lynx -reload http://oblada.k28.com/
-```
-
-<img width="959" height="509" alt="Screenshot 2026-09-30 214445" src="https://github.com/user-attachments/assets/95121f34-9890-45ab-a88a-9d2342a3ca5f" />
-
-<img width="959" height="506" alt="Screenshot 2026-09-30 214530" src="https://github.com/user-attachments/assets/1b9180b6-9989-4298-a6e1-b7775e8e1682" />
-
-Kemudian untuk halaman profil:
+Pengujian yang sama menggunakan Lynx:
 
 ```sh
 lynx -reload http://oblada.k28.com/profil
 ```
 
-Pada halaman profil ditampilkan informasi:
+## Langkah 13 – Konfigurasi Node Molly
+
+Karena node **Molly** juga merupakan bagian dari area core, konfigurasi web dinamis dibuat pada Molly.
+
+**Console: `molly`**
+
+Install paket:
+
+```sh
+apk update
+apk add nginx php84 php84-fpm curl
+```
+
+Buat direktori:
+
+```sh
+mkdir -p /var/www/core
+mkdir -p /etc/nginx/http.d
+```
+
+Buat halaman beranda:
+
+```sh
+cat > /var/www/core/index.php <<'EOF'
+<?php
+echo "<h1>Markas K28</h1>";
+echo "<p>Halo! Selamat datang di markas kecil The Mesh.</p>";
+echo "<p><b>May & AL | Kelompok K28</b></p>";
+echo "<p>Dikelola oleh node: molly</p>";
+echo "<p><a href='/profil'>Lihat Profil Kami</a></p>";
+?>
+EOF
+```
+
+Buat halaman profil:
+
+```sh
+cat > /var/www/core/profil.php <<'EOF'
+<?php
+echo "<h1>Profil Kelompok</h1>";
+echo "<p><b>May & AL</b></p>";
+echo "<p>Kelompok K28 - The Mesh</p>";
+echo "<p>Node: molly</p>";
+echo "<p><a href='/'>Kembali ke Beranda</a></p>";
+?>
+EOF
+```
+
+Jalankan PHP-FPM jika belum aktif:
+
+```sh
+ps | grep -q "[p]hp-fpm84" || php-fpm84
+```
+
+Buat konfigurasi Nginx:
+
+```sh
+cat > /etc/nginx/http.d/core.conf <<'EOF'
+server {
+    listen 80;
+    server_name molly.k28.com;
+
+    root /var/www/core;
+    index index.php;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location = /profil {
+        rewrite ^/profil$ /profil.php last;
+    }
+
+    location ~ \.php$ {
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_pass 127.0.0.1:9000;
+    }
+}
+EOF
+```
+
+Cek konfigurasi:
+
+```sh
+nginx -t
+```
+
+Jika berhasil:
 
 ```text
+syntax is ok
+test is successful
+```
+
+Jalankan atau reload Nginx:
+
+```sh
+ps | grep -q "[n]ginx" && nginx -s reload || nginx
+```
+
+## Langkah 14 – Pengujian Molly dari Delta
+
+Pengujian dilakukan melalui hostname `molly.k28.com`.
+
+### Opsi 1 — `curl`
+
+```sh
+curl http://molly.k28.com/
+```
+
+Kemudian:
+
+```sh
+curl http://molly.k28.com/profil
+```
+
+### Opsi 2 — `lynx`
+
+```sh
+lynx -reload http://molly.k28.com/
+```
+
+Kemudian:
+
+```sh
+lynx -reload http://molly.k28.com/profil
+```
+
+Hasil halaman profil:
+
+```text
+Profil Kelompok
+
 May & AL
 Kelompok K28 - The Mesh
-Node: oblada
+Node: molly
 Kembali ke Beranda
 ```
 
-Pengujian menggunakan hostname `oblada.k28.com`, bukan menggunakan IP address.
+Dengan demikian, halaman Molly juga dapat diakses menggunakan URL bersih:
 
-<img width="959" height="501" alt="Screenshot 2026-09-30 214607" src="https://github.com/user-attachments/assets/358ca289-4ce5-41bc-9414-bd9303bd10a1" />
-
-<img width="959" height="501" alt="Screenshot 2026-09-30 214635" src="https://github.com/user-attachments/assets/54519f82-92f3-4d4c-8122-2fdd5b94d25d" />
+```text
+http://molly.k28.com/profil
+```
 
 ## Kesimpulan
 
-Berdasarkan konfigurasi dan pengujian yang dilakukan, layanan web dinamis berhasil dijalankan pada node **Oblada** menggunakan **Nginx dan PHP-FPM**. Website memiliki halaman beranda dan halaman profil. Aturan rewrite berhasil membuat halaman profil dapat diakses menggunakan URL bersih `/profil` tanpa akhiran `.php`. Pengujian dilakukan menggunakan hostname `oblada.k28.com`.
+Berdasarkan konfigurasi dan pengujian yang dilakukan, layanan web dinamis berhasil dijalankan menggunakan **Nginx dan PHP-FPM** pada node **Oblada dan Molly** di area core. Website memiliki halaman beranda dan halaman profil.
+
+Aturan rewrite berhasil membuat halaman profil dapat diakses menggunakan URL bersih `/profil` tanpa akhiran `.php`. Pengujian dilakukan menggunakan hostname `oblada.k28.com` dan `molly.k28.com` melalui `curl` maupun `lynx`, bukan menggunakan IP address secara langsung.
 
 ## Versi Otomatis (Script)
 
 ### Node `oblada`
 
-Buat dan jalankan script:
+Buat script:
 
 ```sh
-cat > soal10_setup.sh <<'EOF'
+cat > /root/soal10_setup.sh <<'EOF'
 #!/bin/sh
 
-apk update
-apk add nginx php84 php84-fpm
+echo "=== SOAL 10 - OBLADA ==="
 
+echo "[1] INSTALL NGINX PHP-FPM"
+apk update
+apk add nginx php84 php84-fpm curl
+
+echo "[2] DIREKTORI WEBSITE"
 mkdir -p /var/www/core
 mkdir -p /etc/nginx/http.d
 
+echo "[3] INDEX.PHP"
 cat > /var/www/core/index.php <<'PHP'
 <?php
 echo "<h1>Markas K28</h1>";
@@ -2531,6 +3593,7 @@ echo "<p><a href='/profil'>Lihat Profil Kami</a></p>";
 ?>
 PHP
 
+echo "[4] PROFIL.PHP"
 cat > /var/www/core/profil.php <<'PHP'
 <?php
 echo "<h1>Profil Kelompok</h1>";
@@ -2541,6 +3604,7 @@ echo "<p><a href='/'>Kembali ke Beranda</a></p>";
 ?>
 PHP
 
+echo "[5] KONFIGURASI NGINX"
 cat > /etc/nginx/http.d/core.conf <<'NGINX'
 server {
     listen 80;
@@ -2565,35 +3629,53 @@ server {
 }
 NGINX
 
-php-fpm84
+echo "[6] PHP-FPM"
+ps | grep -q "[p]hp-fpm84" || php-fpm84
 
+echo "[7] CEK NGINX"
 nginx -t || exit 1
 
-nginx 2>/dev/null || nginx -s reload
+echo "[8] JALANKAN / RELOAD NGINX"
+if ps | grep -q "[n]ginx"; then
+    nginx -s reload
+else
+    nginx
+fi
+
+echo "[9] TEST"
+curl -s http://oblada.k28.com/ | grep -E "Markas K28|May & AL"
+curl -s http://oblada.k28.com/profil | grep -E "Profil Kelompok|May & AL"
 
 echo "=== SOAL 10 OBLADA SELESAI ==="
 EOF
-
-chmod +x soal10_setup.sh
-./soal10_setup.sh
 ```
 
----
+Cara menjalankannya:
+
+```sh
+chmod +x /root/soal10_setup.sh
+/root/soal10_setup.sh
+```
 
 ### Node `molly`
 
-Buat dan jalankan script:
+Buat script:
 
 ```sh
-cat > soal10_setup.sh <<'EOF'
+cat > /root/soal10_setup.sh <<'EOF'
 #!/bin/sh
 
-apk update
-apk add nginx php84 php84-fpm
+echo "=== SOAL 10 - MOLLY ==="
 
+echo "[1] INSTALL NGINX PHP-FPM"
+apk update
+apk add nginx php84 php84-fpm curl
+
+echo "[2] DIREKTORI WEBSITE"
 mkdir -p /var/www/core
 mkdir -p /etc/nginx/http.d
 
+echo "[3] INDEX.PHP"
 cat > /var/www/core/index.php <<'PHP'
 <?php
 echo "<h1>Markas K28</h1>";
@@ -2607,6 +3689,7 @@ echo "<p><a href='/profil'>Lihat Profil Kami</a></p>";
 ?>
 PHP
 
+echo "[4] PROFIL.PHP"
 cat > /var/www/core/profil.php <<'PHP'
 <?php
 echo "<h1>Profil Kelompok</h1>";
@@ -2617,6 +3700,7 @@ echo "<p><a href='/'>Kembali ke Beranda</a></p>";
 ?>
 PHP
 
+echo "[5] KONFIGURASI NGINX"
 cat > /etc/nginx/http.d/core.conf <<'NGINX'
 server {
     listen 80;
@@ -2641,20 +3725,39 @@ server {
 }
 NGINX
 
-php-fpm84
+echo "[6] PHP-FPM"
+ps | grep -q "[p]hp-fpm84" || php-fpm84
 
+echo "[7] CEK NGINX"
 nginx -t || exit 1
 
-nginx 2>/dev/null || nginx -s reload
+echo "[8] JALANKAN / RELOAD NGINX"
+if ps | grep -q "[n]ginx"; then
+    nginx -s reload
+else
+    nginx
+fi
+
+echo "[9] TEST"
+curl -s http://molly.k28.com/ | grep -E "Markas K28|May & AL"
+curl -s http://molly.k28.com/profil | grep -E "Profil Kelompok|May & AL"
 
 echo "=== SOAL 10 MOLLY SELESAI ==="
 EOF
-
-chmod +x soal10_setup.sh
-./soal10_setup.sh
 ```
 
-### Pengujian dari Node `delta`
+Cara menjalankannya:
+
+```sh
+chmod +x /root/soal10_setup.sh
+/root/soal10_setup.sh
+```
+
+### Pengujian Hostname dari `delta`
+
+Setelah Oblada dan Molly selesai dikonfigurasi, pengujian dilakukan dari `delta`.
+
+#### Opsi 1 — `curl`
 
 ```sh
 curl http://oblada.k28.com/
@@ -2664,17 +3767,46 @@ curl http://molly.k28.com/
 curl http://molly.k28.com/profil
 ```
 
-Pengujian menggunakan Lynx:
+Jika ingin hasil lebih ringkas:
+
+```sh
+curl -s http://oblada.k28.com/profil | grep "Profil Kelompok"
+curl -s http://molly.k28.com/profil | grep "Profil Kelompok"
+```
+
+#### Opsi 2 — `lynx`
+
+Jika belum tersedia:
+
+```sh
+apk add lynx
+```
+
+Kemudian:
 
 ```sh
 lynx -reload http://oblada.k28.com/
 lynx -reload http://oblada.k28.com/profil
+```
 
+dan:
+
+```sh
 lynx -reload http://molly.k28.com/
 lynx -reload http://molly.k28.com/profil
 ```
----
 
+URL yang digunakan dalam pengujian:
+
+```text
+http://oblada.k28.com/
+http://oblada.k28.com/profil
+
+http://molly.k28.com/
+http://molly.k28.com/profil
+```
+
+Tidak ada pengujian menggunakan IP address secara langsung.
 
 # Soal 11 – Reverse Proxy & Load Balancing
 
