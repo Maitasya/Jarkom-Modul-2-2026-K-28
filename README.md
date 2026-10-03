@@ -2171,6 +2171,7 @@ dig @192.225.5.2 -x 192.225.5.6 +short
 ```
 
 Hasil yang diharapkan:
+<img width="959" height="218" alt="image" src="https://github.com/user-attachments/assets/2dfe97be-7ed0-4de1-bd6a-95422ec28c22" />
 
 ```text
 penny.k28.com.
@@ -2237,6 +2238,7 @@ ls -lh /var/bind/slave/
 ```
 
 Hasil yang dicari adalah tiga file reverse zone:
+<img width="959" height="130" alt="image" src="https://github.com/user-attachments/assets/f0f841c8-621f-4cc4-ad26-e066ee4444c2" />
 
 ```text
 3.225.192.in-addr.arpa
@@ -2530,25 +2532,28 @@ chmod +x /root/soal8_tedd.sh
 **1. PRAB**
 
 ```sh
-prab:~# chmod +x /root/soal8_prab.sh
-prab:~# /root/soal8_prab.sh
+chmod +x /root/soal8_prab.sh
+/root/soal8_prab.sh
 ```
+<img width="959" height="167" alt="image" src="https://github.com/user-attachments/assets/6f4ecd4f-6eb4-40a7-b900-5e6ff202a354" />
 
 **2. TEDD**
 
 ```sh
-tedd:~# chmod +x /root/soal8_tedd.sh
-tedd:~# /root/soal8_tedd.sh
+chmod +x /root/soal8_tedd.sh
+/root/soal8_tedd.sh
 ```
+<img width="959" height="301" alt="image" src="https://github.com/user-attachments/assets/50bada9a-4dd0-46d0-801f-5bc48a55467e" />
 
 **3. Verifikasi reverse DNS pada TEDD**
 
 ```sh
-tedd:~# for ip in 192.225.3.3 192.225.4.2 192.225.5.4 192.225.5.6
+for ip in 192.225.3.3 192.225.4.2 192.225.5.4 192.225.5.6
 do
     dig @192.225.5.3 -x "$ip" +noall +comments +answer
 done
 ```
+<img width="959" height="269" alt="image" src="https://github.com/user-attachments/assets/41fa57d3-439b-45a6-bd98-99d2ecf5957e" />
 
 Hasil harus menunjukkan `penny.k28.com`, `abbey.k28.com`, `vault.k28.com`, dan `core.k28.com`, serta flag `aa`.
 
