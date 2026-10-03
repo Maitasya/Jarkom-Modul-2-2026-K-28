@@ -77,28 +77,71 @@ Sesuai gambar topologi soal, rootkit tersambung ke lima switch:
 
 Node yang IP-nya ikut topologi (abbey di Switch4, repository di Switch3 satu segmen dengan prab dan tedd) diatur mengikuti wiring, karena IP harus cocok dengan switch tempat node tersambung.
 
+## Soal 1 — Konfigurasi IP Address dan Default Gateway
+
+### Tujuan
+
+Mengatur IP address dan default gateway seluruh node The Mesh dengan prefix `192.225.x.x`. Rootkit menjadi router pusat yang menghubungkan lima switch.
+
+### Topologi
+
+Sesuai gambar topologi soal, rootkit tersambung ke lima switch:
+
+| Interface rootkit | Switch                        | Node                                       | Subnet         |
+| ----------------- | ----------------------------- | ------------------------------------------ | -------------- |
+| eth4              | Switch6                       | alpha, beta, gamma                         | 192.225.1.0/24 |
+| eth5              | Switch7                       | delta, epsilon                             | 192.225.2.0/24 |
+| eth3              | Switch5                       | penny                                      | 192.225.3.0/24 |
+| eth2              | Switch4                       | abbey                                      | 192.225.4.0/24 |
+| eth1              | Switch1 (Switch2 dan Switch3) | prab, tedd, obladi, desmond, oblada, molly | 192.225.5.0/24 |
+
+<img width="959" height="415" alt="Screenshot 2026-09-28 204904" src="https://github.com/user-attachments/assets/737fa1bd-ff35-4f0c-adb9-66d82673ad52" />
+
+### Tabel Konfigurasi IP
+
+| No | Simpul  | Interface | IP Address     | Gateway     |
+| -- | ------- | --------- | -------------- | ----------- |
+| 1  | rootkit | eth1      | 192.225.5.1/24 | -           |
+| 2  | rootkit | eth2      | 192.225.4.1/24 | -           |
+| 3  | rootkit | eth3      | 192.225.3.1/24 | -           |
+| 4  | rootkit | eth4      | 192.225.1.1/24 | -           |
+| 5  | rootkit | eth5      | 192.225.2.1/24 | -           |
+| 6  | alpha   | eth0      | 192.225.1.2/24 | 192.225.1.1 |
+| 7  | beta    | eth0      | 192.225.1.3/24 | 192.225.1.1 |
+| 8  | gamma   | eth0      | 192.225.1.4/24 | 192.225.1.1 |
+| 9  | delta   | eth0      | 192.225.2.2/24 | 192.225.2.1 |
+| 10 | epsilon | eth0      | 192.225.2.3/24 | 192.225.2.1 |
+| 11 | abbey   | eth0      | 192.225.4.2/24 | 192.225.4.1 |
+| 12 | penny   | eth0      | 192.225.3.3/24 | 192.225.3.1 |
+| 13 | obladi  | eth0      | 192.225.5.4/24 | 192.225.5.1 |
+| 14 | desmond | eth0      | 192.225.5.5/24 | 192.225.5.1 |
+| 15 | oblada  | eth0      | 192.225.5.6/24 | 192.225.5.1 |
+| 16 | molly   | eth0      | 192.225.5.7/24 | 192.225.5.1 |
+| 17 | prab    | eth0      | 192.225.5.2/24 | 192.225.5.1 |
+| 18 | tedd    | eth0      | 192.225.5.3/24 | 192.225.5.1 |
+
+Node yang IP-nya mengikuti topologi diatur sesuai dengan switch tempat node tersebut terhubung, sehingga IP dan gateway berada pada subnet yang sesuai.
+
 ### Langkah Pengerjaan (Step by Step)
 
-**1. Tulis `/etc/network/interfaces` (contoh obladi)**
+**1. Konfigurasi IP pada rootkit**
+
+Pada **rootkit**, atur IP setiap interface sesuai subnet:
 
 ```sh
-cat > /etc/network/interfaces <<'EOF'
-auto lo
-iface lo inet loopback
-
-auto eth0
-iface eth0 inet static
-address 192.225.5.4
-netmask 255.255.255.0
-gateway 192.225.5.1
-EOF
+ip addr replace 192.225.5.1/24 dev eth1
+ip addr replace 192.225.4.1/24 dev eth2
+ip addr replace 192.225.3.1/24 dev eth3
+ip addr replace 192.225.1.1/24 dev eth4
+ip addr replace 192.225.2.1/24 dev eth5
 ```
 
-**2. Terapkan IP sekarang tanpa reboot**
+**2. Konfigurasi IP dan gateway pada node**
+
+Contoh pada **obladi**:
 
 ```sh
-ip addr flush dev eth0
-ip addr add 192.225.5.4/24 dev eth0
+ip addr replace 192.225.5.4/24 dev eth0
 ip route replace default via 192.225.5.1
 ```
 
@@ -112,32 +155,38 @@ ping -c 3 8.8.8.8
 ```
 
 <!ip -br addr, ip route, dan ping berhasil (mis. obladi) -->
-<img width="959" height="426" alt="image" src="https://github.com/user-attachments/assets/a788c4d4-31b2-4478-bdaa-9139378ad60b" />
 
-Ulangi untuk node lain dengan IP dan gateway sesuai tabel.
+<img width="959" height="426" alt="image" src="https://github.com/user-attachments/assets/a788c4d4-31b2-447b-bdaa-9139378ad60b" />
 
-**4. Uji wiring dengan tcpdump (di rootkit)**
+Perintah tersebut diulangi pada node lain dengan IP dan gateway sesuai tabel.
+
+**4. Uji wiring dengan tcpdump**
+
+Pada **rootkit**:
 
 ```sh
-tcpdump -ni any arp or icmp
+tcpdump -ni any 'arp or icmp'
 ```
 
-Sambil ping ke gateway dari node, pastikan paket masuk lewat interface rootkit yang sesuai tabel topologi.
+Kemudian lakukan ping dari node ke gateway untuk memastikan paket masuk melalui interface rootkit yang sesuai.
 
 ### Versi Otomatis (Script)
 
-Script `soal1.sh` dibuat di tiap node. Ubah dua baris `IP` dan `GW` sesuai tabel. Contoh di bawah untuk **obladi**:
+Script `soal1.sh` dibuat pada setiap node. Ubah nilai `IP` dan `GW` sesuai tabel.
+
+Contoh untuk **obladi**:
 
 ```sh
-#!/bin/bash
+cat > /root/soal1.sh <<'EOF'
+#!/bin/sh
+
 IP="192.225.5.4"
 GW="192.225.5.1"
 
-ip addr flush dev eth0
-ip addr add $IP/24 dev eth0
-ip route replace default via $GW
+ip addr replace "$IP/24" dev eth0
+ip route replace default via "$GW"
 
-cat > /etc/network/interfaces <<EOF2
+cat > /etc/network/interfaces <<EOT
 auto lo
 iface lo inet loopback
 
@@ -146,27 +195,35 @@ iface eth0 inet static
 address $IP
 netmask 255.255.255.0
 gateway $GW
-EOF2
+EOT
 
 ip -br addr
 ip route
- 
+EOF
+
 chmod +x /root/soal1.sh
 /root/soal1.sh
 ```
 
-Nilai `IP` dan `GW` untuk node yang berubah:
+Nilai `IP` dan `GW` untuk node lainnya:
 
-| Node | IP | GW |
-|------|----|----|
-| abbey | 192.225.4.2 | 192.225.4.1 |
-| penny | 192.225.3.3 | 192.225.3.1 |
-| obladi | 192.225.5.4 | 192.225.5.1 |
+| Node    | IP          | GW          |
+| ------- | ----------- | ----------- |
+| alpha   | 192.225.1.2 | 192.225.1.1 |
+| beta    | 192.225.1.3 | 192.225.1.1 |
+| gamma   | 192.225.1.4 | 192.225.1.1 |
+| delta   | 192.225.2.2 | 192.225.2.1 |
+| epsilon | 192.225.2.3 | 192.225.2.1 |
+| abbey   | 192.225.4.2 | 192.225.4.1 |
+| penny   | 192.225.3.3 | 192.225.3.1 |
+| prab    | 192.225.5.2 | 192.225.5.1 |
+| tedd    | 192.225.5.3 | 192.225.5.1 |
+| obladi  | 192.225.5.4 | 192.225.5.1 |
 | desmond | 192.225.5.5 | 192.225.5.1 |
-| oblada | 192.225.5.6 | 192.225.5.1 |
-| molly | 192.225.5.7 | 192.225.5.1 |
+| oblada  | 192.225.5.6 | 192.225.5.1 |
+| molly   | 192.225.5.7 | 192.225.5.1 |
 
-Script verifikasi `cek_node*.sh` di README sebelumnya tetap dipakai sebagai pengecekan tambahan.
+Script verifikasi `cek_node*.sh` pada README sebelumnya tetap dapat digunakan sebagai pengecekan tambahan.
 
 ---
 
