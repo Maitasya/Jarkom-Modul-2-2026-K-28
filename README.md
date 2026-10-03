@@ -111,7 +111,7 @@ ping -c 3 8.8.8.8
 
 <!ip -br addr, ip route, dan ping berhasil (mis. obladi) -->
 
-<img width="959" height="426" alt="image" src="https://github.com/user-attachments/assets/a788c4d4-31b2-447b-bdaa-9139378ad60b" />
+<img width="569" height="430" alt="image" src="https://github.com/user-attachments/assets/ff86dc43-d58c-40b7-b29d-97d4c83d10e8" />
 
 Perintah tersebut diulangi pada node lain dengan IP dan gateway sesuai tabel.
 
