@@ -355,7 +355,7 @@ Pengujian ini memastikan resolver dapat menerjemahkan nama domain menjadi alamat
 
 ### Versi Otomatis (Script)
 
-Script `soal2.sh` dibuat di tiap node. Contoh di bawah untuk **obladi**:
+Script `soal3.sh` dibuat di tiap node. Contoh di bawah untuk **obladi**:
 
 ```
 #!/bin/sh
@@ -388,7 +388,7 @@ jalankan dengan perintah :
 
 ```
 chmod +x /root/soal1.sh
-/root/soal1.sh
+/root/soal3.sh
 ```
 hasil:
 <img width="959" height="481" alt="image" src="https://github.com/user-attachments/assets/f5f3c478-fe55-4401-8068-b8831ce6df52" />
